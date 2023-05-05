@@ -5,10 +5,10 @@ import java.util.ArrayList;
 import gov.nasa.arc.astrobee.types.Quaternion;
 
 public class ConstQuaternions {
-    final Quaternion start = new Quaternion(1,0,0,0);
-    final Quaternion goal = new Quaternion(0, 0 ,-0.707f ,0.707f);
+    public final Quaternion start = new Quaternion(1,0,0,0);
+    public final Quaternion goal = new Quaternion(0, 0 ,-0.707f ,0.707f);
 
-    final ArrayList<Quaternion> points = new ArrayList<Quaternion>(){
+    public final ArrayList<Quaternion> points = new ArrayList<Quaternion>(){
         {
             add(new Quaternion(0, 0 ,-0.707f, 0.707f));
             add(new Quaternion(0.5f, 0.5f, -0.5f, 0.5f));
