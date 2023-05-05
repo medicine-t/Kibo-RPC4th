@@ -5,10 +5,10 @@ import gov.nasa.arc.astrobee.types.Point;
 import gov.nasa.arc.astrobee.types.Quaternion;
 
 public class ConstPoints {
-    final Point start = new Point(9.815,-9.806,4.293);
-    final Point goal = new Point(11.143, -6.7607, 4.9654);
+    public final Point start = new Point(9.815,-9.806,4.293);
+    public final Point goal = new Point(11.143, -6.7607, 4.9654);
 
-    final ArrayList<Point> points = new ArrayList<Point>(){
+    public final ArrayList<Point> points = new ArrayList<Point>(){
         {
             add(new Point(11.2746,-9.92284,5.2988));
             add(new Point(10.612,-9.0709,4.48 ));
