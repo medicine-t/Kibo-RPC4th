@@ -15,15 +15,15 @@ public class CheckPoints {
 
     private final float div_value = 0.05f;
     private final float offset = 0.05f;
-
+    public int num_div_x = (int) Math.ceil((length - 2 * offset) / div_value);
+    public int num_div_y = (int) Math.ceil((height - 2 * offset) / div_value);
+    public int num_div_z = (int) Math.ceil((depth - 2 * offset) / div_value);
     public Point idx2Point(int i, int j, int k){
         return new Point(offset + i*div_value, offset + j*div_value, offset + k*div_value);
     }
 
-    CheckPoints() {
-        int num_div_x = (int) Math.ceil((length - 2 * offset) / div_value);
-        int num_div_y = (int) Math.ceil((height - 2 * offset) / div_value);
-        int num_div_z = (int) Math.ceil((depth - 2 * offset) / div_value);
+    public CheckPoints() {
+
         this.checkPoints = new boolean[num_div_x][num_div_y][num_div_z];
 
         Area[] KIZs = new ConstAreas().KIZs;
