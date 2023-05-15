@@ -2,6 +2,7 @@ package com.stellarcoders;
 
 import com.stellarcoders.Area;
 import com.stellarcoders.ConstAreas;
+import com.stellarcoders.utils.PointI;
 
 import java.util.ArrayList;
 
@@ -20,6 +21,17 @@ public class CheckPoints {
     public int num_div_z = (int) Math.ceil((depth - 2 * offset) / div_value);
     public Point idx2Point(int i, int j, int k){
         return new Point(offset + i*div_value, offset + j*div_value, offset + k*div_value);
+    }
+
+    public  PointI Point2I(Point p){
+        double x = p.getX() - 9.5f;
+        double y = p.getY() - (-10.5f);
+        double z = p.getZ() - 4.02f;
+
+        int i = (int) Math.floor((x - this.offset) / div_value);
+        int j = (int) Math.floor((y - this.offset) / div_value);
+        int k = (int) Math.floor((z - this.offset) / div_value);
+        return new PointI(i,j,k);
     }
 
     public CheckPoints() {
