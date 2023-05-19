@@ -32,4 +32,7 @@ public class PointI {
     }
 
 
+    public String toString(){
+        return "[PointI] X: " + this.x.toString() + " Y: " + this.y.toString() + " Z: " + this.z.toString();
+    }
 }

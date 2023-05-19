@@ -66,11 +66,15 @@ public class Dijkstra3D {
 
     class Node {
         PointI p;
-        double d;
+        Double d;
 
         Node() {
             p = new PointI();
-            d = 0;
+            d = new Double(0);
+        }
+
+        public String toString(){
+            return this.p.toString() + " / Distance :" + d.toString() ;
         }
     }
 
@@ -81,13 +85,13 @@ public class Dijkstra3D {
             double d2 = obj2.d;
 
             //昇順
-            return Double.compare(d2, d1);
+            return Double.compare(d1, d2);
         }
     }
 
     public Stack<PointI> dijkstra(PointI start, PointI goal){
         Log.i("StellarCoders",String.format("Dijkstra Called"));
-        Log.i("StellarCoders",String.format("Check point size = %d,%d,%d",meta.num_div_x,meta.num_div_y,meta.num_div_z));
+        Log.i("StellarCoders",String.format("Dijkstra Goal is %s",goal.toString()));
         PriorityQueue<Node> que = new PriorityQueue<Node>(new NodeComparator());
         double[][][] dist = new double[meta.num_div_x + 10][meta.num_div_y + 10][meta.num_div_z + 10];
         Node[][][] prev = new Node[meta.num_div_x + 10][meta.num_div_y + 10][meta.num_div_z + 10];
@@ -95,10 +99,11 @@ public class Dijkstra3D {
             for (int j = 0; j < meta.num_div_y + 10; j++) {
                 for (int k = 0; k < meta.num_div_z + 10; k++) {
                     dist[i][j][k] = INF;
+                    prev[i][j][k] = new Node();
                 }
             }
         }
-        Log.i("StellarCoders",String.format("Dijkstra Start"));
+        Log.i("StellarCoders", "Dijkstra Start");
         Log.i("StellarCoders",String.format("Start Point is %d,%d,%d",start.getX(),start.getY(),start.getZ()));
         dist[start.getX()][start.getY()][start.getZ()] = 0;
         Node s = new Node();
@@ -112,10 +117,12 @@ public class Dijkstra3D {
             int x = p.getX();
             int y = p.getY();
             int z = p.getZ();
+            //Log.i("StellarCoders",q.toString());
             if(p == goal){
                 trace = q;
+                break;
             }
-            double distance = q.d;
+            Double distance = q.d;
             for(int d = 0;d < 26;d++){
                 //border check
                 if(Math.min(x + dx[d],Math.min(y + dy[d],z + dz[d])) < 0)continue;
@@ -130,15 +137,19 @@ public class Dijkstra3D {
                     dist[x + dx[d]][y + dy[d]][z + dz[d]] = distance + cost[d];
                     prev[x + dx[d]][y + dy[d]][z + dz[d]] = q;
                     que.add(nxt);
+
                 }
             }
         }
 
+
         Log.i("StellarCoders","Dijkstra finish. Start construct path");
         // re-construct path
         Stack<PointI> path = new Stack<>();
+        path.push(prev[goal.getX()][goal.getY()][goal.getZ()].p);
+        trace = prev[goal.getX()][goal.getY()][goal.getZ()];
         while(!trace.p.isNan()){
-            path.add(trace.p);
+            path.push(trace.p);
             trace = prev[trace.p.getX()][trace.p.getY()][trace.p.getZ()];
         }
         Log.i("StellarCoders","Dijkstra path construct finished");

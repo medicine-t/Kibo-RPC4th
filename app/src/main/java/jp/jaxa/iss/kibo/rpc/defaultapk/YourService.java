@@ -8,10 +8,12 @@ import com.stellarcoders.ConstQuaternions;
 
 import java.util.List;
 import java.util.Stack;
+import java.util.function.BiFunction;
 
 import gov.nasa.arc.astrobee.Result;
 import gov.nasa.arc.astrobee.types.Point;
 import gov.nasa.arc.astrobee.types.Quaternion;
+import jp.jaxa.iss.kibo.rpc.api.KiboRpcApi;
 import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
 import com.stellarcoders.utils.*;
 
@@ -25,9 +27,12 @@ public class YourService extends KiboRpcService {
         // write your plan 1 here
         api.startMission();
 
-        // move to initial position
-        //api.moveTo(new Point(10.5,-9.6,4.8 ),new Quaternion(0,0,0,1),true);
-        this.moveDijkstra(new Point(10.5,-9.6,4.8 ),new Quaternion(0,0,0,1));
+
+
+        api.moveTo(new Point(10.5,-9.6,4.8 ),new Quaternion(0,0,0,1),true);
+        //this.moveDijkstra(api,new Point(10.5,-9.6,4.8 ),new Quaternion(0,0,0,1));
+        Log.i("StellarCoders","Moved to Initial Point");
+
         ConstPoints pointData = new ConstPoints();
         ConstQuaternions quaternions = new ConstQuaternions();
         List<Integer> activeTargets = api.getActiveTargets();
@@ -39,36 +44,31 @@ public class YourService extends KiboRpcService {
 
         //new Point(11.0,-9.5,5.0)
         //api.moveTo(pointData.points.get(0),quaternions.points.get(0),true);
-        this.moveDijkstra(new Point(11.0,-9.5,5.0));
+        //this.moveDijkstra(api,new Point(11.0,-9.5,5.0));
+        moveDijkstra(pointData.points.get(0),quaternions.points.get(0));
 
         api.notifyGoingToGoal();
         //api.moveTo(pointData.goal,quaternions.goal,true);
-        this.moveDijkstra(pointData.goal,quaternions.goal);
+        moveDijkstra(pointData.goal,quaternions.goal);
         api.reportMissionCompletion("hoge");
     }
 
-    void moveDijkstra(Point goal) {
-        CheckPoints checkPoints = new CheckPoints();
-        Dijkstra3D dijManager = new Dijkstra3D();
-        Stack<PointI> move_oder = dijManager.dijkstra(checkPoints.Point2I(api.getRobotKinematics().getPosition()), checkPoints.Point2I(goal));
-        while(!move_oder.empty()){
-            PointI p = move_oder.pop();
-            Point to = checkPoints.idx2Point(p.getX(), p.getY(), p.getZ());
-            Result result = api.moveTo(to, new Quaternion(0, 0, 0, 1),true);
-        }
-
-        Log.i("StellarCoders",String.format("Moved to Point is %.3f,%3.f,%.3f",goal.getX(),goal.getY(),goal.getZ()));
+    void moveDijkstra( Point goal) {
+        moveDijkstra(goal,new Quaternion(0,0,0,1));
     }
     void moveDijkstra(Point goal, Quaternion q) {
+        Log.i("StellarCoders",String.format("Current Pos %s",this.api.getRobotKinematics().getPosition().toString()));
         CheckPoints checkPoints = new CheckPoints();
         Dijkstra3D dijManager = new Dijkstra3D();
         Stack<PointI> move_oder = dijManager.dijkstra(checkPoints.Point2I(api.getRobotKinematics().getPosition()), checkPoints.Point2I(goal));
         while(!move_oder.empty()){
             PointI p = move_oder.pop();
             Point to = checkPoints.idx2Point(p.getX(), p.getY(), p.getZ());
-            Result result = api.moveTo(to, q,true);
+            Result result = this.api.moveTo(to, q,true);
+            Log.i("StellarCoders", result.getMessage());
         }
-        Log.i("StellarCoders",String.format("Moved to Point is %.3f,%3.f,%.3f",goal.getX(),goal.getY(),goal.getZ()));
+        Log.i("StellarCoders","Moved to Point");
+        Log.i("StellarCoders",String.format("Current Pos %s",this.api.getRobotKinematics().getPosition().toString()));
     }
 
     @Override
