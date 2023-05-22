@@ -2,7 +2,6 @@ package com.stellarcoders;
 import java.util.ArrayList;
 
 import gov.nasa.arc.astrobee.types.Point;
-import gov.nasa.arc.astrobee.types.Quaternion;
 
 public class ConstPoints {
     public final Point start = new Point(9.815,-9.806,4.293);

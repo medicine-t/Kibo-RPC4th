@@ -4,9 +4,7 @@ import gov.nasa.arc.astrobee.types.Point;
 import com.stellarcoders.CheckPoints;
 import com.stellarcoders.utils.PointI;
 
-import java.util.Comparator;
 import java.util.PriorityQueue;
-import java.util.Queue;
 import java.util.Stack;
 import android.util.Log;
 
@@ -64,32 +62,10 @@ public class Dijkstra3D {
             1.7, 1.4, 1.7
     };
 
-    class Node {
-        PointI p;
-        Double d;
 
-        Node() {
-            p = new PointI();
-            d = new Double(0);
-        }
 
-        public String toString(){
-            return this.p.toString() + " / Distance :" + d.toString() ;
-        }
-    }
 
-    class NodeComparator implements Comparator<Node> {
-        @Override
-        public int compare(Node obj1, Node obj2) {
-            double d1 = obj1.d;
-            double d2 = obj2.d;
-
-            //昇順
-            return Double.compare(d1, d2);
-        }
-    }
-
-    public Stack<PointI> dijkstra(PointI start, PointI goal){
+    public Stack<Node> dijkstra(PointI start, PointI goal){
         Log.i("StellarCoders",String.format("Dijkstra Called"));
         Log.i("StellarCoders",String.format("Dijkstra Goal is %s",goal.toString()));
         PriorityQueue<Node> que = new PriorityQueue<Node>(new NodeComparator());
@@ -134,6 +110,7 @@ public class Dijkstra3D {
                     Node nxt = new Node();
                     nxt.p = new PointI(x + dx[d],y + dy[d],z + dz[d]);
                     nxt.d = distance + cost[d];
+                    nxt.dir = d;
                     dist[x + dx[d]][y + dy[d]][z + dz[d]] = distance + cost[d];
                     prev[x + dx[d]][y + dy[d]][z + dz[d]] = q;
                     que.add(nxt);
@@ -145,11 +122,11 @@ public class Dijkstra3D {
 
         Log.i("StellarCoders","Dijkstra finish. Start construct path");
         // re-construct path
-        Stack<PointI> path = new Stack<>();
-        path.push(prev[goal.getX()][goal.getY()][goal.getZ()].p);
+        Stack<Node> path = new Stack<>();
+        path.push(prev[goal.getX()][goal.getY()][goal.getZ()]);
         trace = prev[goal.getX()][goal.getY()][goal.getZ()];
         while(!trace.p.isNan()){
-            path.push(trace.p);
+            path.push(trace);
             trace = prev[trace.p.getX()][trace.p.getY()][trace.p.getZ()];
         }
         Log.i("StellarCoders","Dijkstra path construct finished");

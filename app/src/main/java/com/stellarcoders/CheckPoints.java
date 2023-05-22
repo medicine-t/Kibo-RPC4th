@@ -1,18 +1,14 @@
 package com.stellarcoders;
 
-import com.stellarcoders.Area;
-import com.stellarcoders.ConstAreas;
 import com.stellarcoders.utils.PointI;
-
-import java.util.ArrayList;
 
 import gov.nasa.arc.astrobee.types.Point;
 
 public class CheckPoints {
     public final boolean[][][] checkPoints;
-    private final float length = 11.665f - 9.5f; // Global:x_max - Global:x_min;
-    private final float height = -6.0f - (-10.5f); //y
-    private final float depth =  5.57f - 4.02f;//z
+    private final float length = 11.665f - 9.5f; //2.165 // Global:x_max - Global:x_min;
+    private final float height = -6.0f - (-10.5f); //4.5 //y
+    private final float depth =  5.57f - 4.02f;// 1.55 //z
 
     private final float div_value = 0.10f;
     private final float offset = 0.05f;
