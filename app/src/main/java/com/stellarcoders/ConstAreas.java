@@ -1,9 +1,5 @@
 package com.stellarcoders;
-import com.stellarcoders.Area;
 
-import java.util.ArrayList;
-
-import gov.nasa.arc.astrobee.types.Point;
 
 public class ConstAreas {
     public final Area[] KOZs = {
