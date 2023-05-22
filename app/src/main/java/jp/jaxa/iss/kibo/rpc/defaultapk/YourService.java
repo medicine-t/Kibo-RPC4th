@@ -5,15 +5,18 @@ import android.util.Log;
 import com.stellarcoders.CheckPoints;
 import com.stellarcoders.ConstPoints;
 import com.stellarcoders.ConstQuaternions;
+import com.stellarcoders.utils.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 
 import gov.nasa.arc.astrobee.Result;
 import gov.nasa.arc.astrobee.types.Point;
 import gov.nasa.arc.astrobee.types.Quaternion;
 import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
-import com.stellarcoders.utils.*;
+
 
 /**
  * Class meant to handle commands from the Ground Data System and execute them in Astrobee
@@ -25,34 +28,49 @@ public class YourService extends KiboRpcService {
         // write your plan 1 here
         api.startMission();
 
-
-
-        api.moveTo(new Point(10.5,-10.0,4.5 ),new Quaternion(0,0,0,1),true);
-        //this.moveDijkstra(api,new Point(10.5,-9.6,4.8 ),new Quaternion(0,0,0,1));
-        Log.i("StellarCoders","Moved to Initial Point");
-
         ConstPoints pointData = new ConstPoints();
         ConstQuaternions quaternions = new ConstQuaternions();
-        List<Integer> activeTargets = api.getActiveTargets();
-        CheckPoints checkPoints = new CheckPoints();
-        for (int i = 0; i < activeTargets.size(); i++) {
-            activeTargets.set(i,activeTargets.get(i) - 1);
+
+        // Move Around phase
+        Map<Integer,Boolean> targetMapping = new HashMap<>();
+        while(2 * 60 * 1000 <= api.getTimeRemaining().get(1)) { //remain time is [ms]
+            List<Integer> activeTargets = api.getActiveTargets();
+            CheckPoints checkPoints = new CheckPoints();
+            Point currentPos = api.getRobotKinematics().getPosition();
+            for (int i = 0; i < activeTargets.size(); i++) {
+                activeTargets.set(i, activeTargets.get(i) - 1);
+                targetMapping.put(activeTargets.get(i),false);
+            }
+
+            Integer targetIndex = activeTargets.get(0);
+            for(Map.Entry<Integer,Boolean> entry : targetMapping.entrySet()){
+                if(!entry.getValue() && Utils.distance3DSquare(currentPos,pointData.points.get(targetIndex)) > Utils.distance3DSquare(currentPos,pointData.points.get(entry.getKey()))){
+                    targetIndex = entry.getKey();
+                }
+            }
+
+
+            Log.i("StellarCoders", String.format("Target : %d",targetIndex));
+            moveDijkstra(pointData.points.get(targetIndex), quaternions.points.get(targetIndex));
+            api.laserControl(true);
+            api.takeTargetSnapshot(targetIndex + 1);
+            targetMapping.put(targetIndex,true);
+            Log.i("StellarCoders", String.format("Remain Time is %s",api.getTimeRemaining().get(1).toString()));
         }
 
 
-        //new Point(11.0,-9.5,5.0)
-        //api.moveTo(pointData.points.get(0),quaternions.points.get(0),true);
-        //this.moveDijkstra(api,new Point(11.0,-9.5,5.0));
-        Log.i("StellarCoders",String.format("Target : %d",activeTargets.get(0)));
-        moveDijkstra(pointData.points.get(activeTargets.get(0)),quaternions.points.get(activeTargets.get(0)));
-        api.laserControl(true);
-        api.takeTargetSnapshot(activeTargets.get(0));
+        // Go to read QR-Code
+        Log.i("StellarCoders","Start Moving to QRCode position");
+        moveDijkstra(pointData.QRCodePos,quaternions.QRCodePos);
 
 
+        // READ QR DATA
+        //
+
+        // Go to Goal
         api.notifyGoingToGoal();
-        //api.moveTo(pointData.goal,quaternions.goal,true);
+        Log.i("StellarCoders","Start Moving to Goal");
         moveDijkstra(pointData.goal,quaternions.goal);
-        api.moveTo(pointData.start, quaternions.goal,true   );
         api.reportMissionCompletion("hoge");
     }
 
@@ -67,7 +85,7 @@ public class YourService extends KiboRpcService {
         while(!move_oder.empty()){
             Node n = move_oder.pop();
             PointI p = n.p;
-            while(!move_oder.empty() && move_oder.firstElement().dir.equals(n.dir)){
+            while(!move_oder.empty() && move_oder.peek().dir.equals(n.dir)){
                 n = move_oder.pop();
             }
             Point to = checkPoints.idx2Point(p.getX(), p.getY(), p.getZ());
@@ -86,11 +104,13 @@ public class YourService extends KiboRpcService {
     @Override
     protected void runPlan2(){
         // write your plan 2 here
+        this.runPlan1();
     }
 
     @Override
     protected void runPlan3(){
         // write your plan 3 here
+        this.runPlan1();
     }
 
 }

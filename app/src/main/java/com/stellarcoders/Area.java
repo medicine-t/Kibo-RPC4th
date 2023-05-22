@@ -29,4 +29,9 @@ public class Area {
         return false;
     }
 
+    public final Boolean isIntersect(Area a){
+        return ((a.x_min <= this.x_max && a.x_max >= this.x_min) &&
+                (a.y_min <= this.y_max && a.y_max >= this.y_min) &&
+                (a.z_min <= this.z_max && a.z_max >= this.z_min));
+    }
 }
