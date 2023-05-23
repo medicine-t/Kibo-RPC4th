@@ -34,4 +34,8 @@ public class Area {
                 (a.y_min <= this.y_max && a.y_max >= this.y_min) &&
                 (a.z_min <= this.z_max && a.z_max >= this.z_min));
     }
+
+    public final Area mergeArea(Area a){
+        return new Area(Math.min(a.x_min,this.x_min),Math.min(a.y_min,this.y_min),Math.min(a.z_min,this.z_min),Math.max(a.x_max,this.x_max),Math.max(a.y_max,this.y_max),Math.max(a.z_max,this.z_max));
+    }
 }
