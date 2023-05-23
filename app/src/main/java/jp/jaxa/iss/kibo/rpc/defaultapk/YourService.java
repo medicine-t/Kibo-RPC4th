@@ -17,6 +17,7 @@ import gov.nasa.arc.astrobee.types.Point;
 import gov.nasa.arc.astrobee.types.Quaternion;
 import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
 
+import org.opencv.objdetect.QRCodeDetector;
 
 /**
  * Class meant to handle commands from the Ground Data System and execute them in Astrobee
@@ -30,6 +31,28 @@ public class YourService extends KiboRpcService {
 
         ConstPoints pointData = new ConstPoints();
         ConstQuaternions quaternions = new ConstQuaternions();
+
+        api.moveTo(new Point(10.5,-10.0,4.5 ),new Quaternion(0,0,0,1),true);
+        //this.moveDijkstra(api,new Point(10.5,-9.6,4.8 ),new Quaternion(0,0,0,1));
+        Log.i("StellarCoders","Moved to Initial Point");
+
+        // Go to read QR-Code
+        Log.i("StellarCoders","Start Moving to QRCode position");
+        moveDijkstra(pointData.QRCodePos,quaternions.QRCodePos);
+
+        // READ QR DATA
+        QRCodeDetector qrCodeDetector = new QRCodeDetector();
+        String qrString = qrCodeDetector.detectAndDecode(api.getMatNavCam());
+
+        Map<String,String> qrMap = new HashMap<String, String>() {{
+            put("JEM", "STAY_AT_JEM");
+            put("COLUMBUS", "GO_TO_COLUMBUS");
+            put("RACK1", "CHECK_RACK_1");
+            put("ASTROBEE", "I_AM_HERE");
+            put("INTBALL","LOOKING_FORWARD_TO_SEE_YOU");
+            put("BLANK","NO_PROBLEM");
+        }};
+        //
 
         // Move Around phase
         Map<Integer,Boolean> targetMapping = new HashMap<>();
@@ -56,22 +79,15 @@ public class YourService extends KiboRpcService {
             api.takeTargetSnapshot(targetIndex + 1);
             targetMapping.put(targetIndex,true);
             Log.i("StellarCoders", String.format("Remain Time is %s",api.getTimeRemaining().get(1).toString()));
+            break;
         }
 
-
-        // Go to read QR-Code
-        Log.i("StellarCoders","Start Moving to QRCode position");
-        moveDijkstra(pointData.QRCodePos,quaternions.QRCodePos);
-
-
-        // READ QR DATA
-        //
 
         // Go to Goal
         api.notifyGoingToGoal();
         Log.i("StellarCoders","Start Moving to Goal");
         moveDijkstra(pointData.goal,quaternions.goal);
-        api.reportMissionCompletion("hoge");
+        api.reportMissionCompletion(qrMap.getOrDefault(qrString,"FAILED TO GET"));
     }
 
     void moveDijkstra( Point goal) {
