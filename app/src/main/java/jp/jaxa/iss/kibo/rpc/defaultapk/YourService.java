@@ -83,7 +83,7 @@ public class YourService extends KiboRpcService {
 
             Log.i("StellarCoders", String.format("Target : %d",targetIndex));
             //移動
-            moveDijkstra(pointData.points.get(targetIndex), quaternions.points.get(targetIndex));
+            moveDijkstra(pointData.points.get(targetIndex), quaternions.points.get(targetIndex),targetIndex);
 
             /*
             * ここで角度の調整など
@@ -103,10 +103,11 @@ public class YourService extends KiboRpcService {
         api.reportMissionCompletion(qrString);
     }
 
-    void moveDijkstra( Point goal) {
-        moveDijkstra(goal,new Quaternion(0,0,0,1));
+    void moveDijkstra(Point goal,Quaternion q){
+        moveDijkstra(goal,q,-1);
     }
-    void moveDijkstra(Point goal, Quaternion q) {
+
+    void moveDijkstra(Point goal, Quaternion q, int targetIndex) {
         Log.i("StellarCoders",String.format("Current Pos %s",this.api.getRobotKinematics().getPosition().toString()));
         CheckPoints checkPoints = new CheckPoints();
         Area[] KOZs = new ConstAreas().KOZs;
@@ -140,6 +141,10 @@ public class YourService extends KiboRpcService {
             Point to = checkPoints.idx2Point(n.p.getX(), n.p.getY(), n.p.getZ());
             Log.i("StellarCoders", String.format("From: %s. Destination: %s. CombinedArea: %d",api.getRobotKinematics().getPosition().toString(),to.toString(),D_cnt));
             Result result = this.api.moveTo(to, q,true);
+            if(targetIndex != -1 && !api.getActiveTargets().contains(targetIndex + 1)){
+                Log.i("StellarCoders","Destination target now become de-active.");
+                return;
+            }
             if(result != null && !result.hasSucceeded()){
                 Log.i("StellarCoders", result.getMessage());
             }
