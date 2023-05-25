@@ -45,6 +45,7 @@ public class YourService extends KiboRpcService {
 
         // READ QR DATA
         QRCodeDetector qrCodeDetector = new QRCodeDetector();
+        api.flashlightControlFront(0.05f);
         String qrString = qrCodeDetector.detectAndDecode(api.getMatNavCam());
 
         Map<String,String> qrMap = new HashMap<String, String>() {{
@@ -59,10 +60,11 @@ public class YourService extends KiboRpcService {
         qrString = qrMap.getOrDefault(qrString,"FAILED TO GET");
         //
         Log.i("StellarCoders",String.format("Read QR String is: %s",qrString));
+        Log.i("StellarCoders", String.format("Remain Time is %s",api.getTimeRemaining().get(1).toString()));
 
         // Move Around phase
         Map<Integer,Boolean> targetMapping = new HashMap<>();
-        while(2 * 60 * 1000 <= api.getTimeRemaining().get(1)) { //remain time is [ms]
+        while(2 * 60 * 1000 + 30 * 1000 <= api.getTimeRemaining().get(1)) { //remain time is [ms]
             List<Integer> activeTargets = api.getActiveTargets();
             CheckPoints checkPoints = new CheckPoints();
             Point currentPos = api.getRobotKinematics().getPosition();
@@ -80,12 +82,17 @@ public class YourService extends KiboRpcService {
 
 
             Log.i("StellarCoders", String.format("Target : %d",targetIndex));
+            //移動
             moveDijkstra(pointData.points.get(targetIndex), quaternions.points.get(targetIndex));
-            api.laserControl(true);
+
+            /*
+            * ここで角度の調整など
+            * */
+            Result laserResult = api.laserControl(true);
+            if(laserResult != null && !laserResult.hasSucceeded())Log.i("StellarCoders",String.format("Laser toggle result : %s",laserResult.getMessage()));
             api.takeTargetSnapshot(targetIndex + 1);
             targetMapping.put(targetIndex,true);
             Log.i("StellarCoders", String.format("Remain Time is %s",api.getTimeRemaining().get(1).toString()));
-            break;
         }
 
 
@@ -108,29 +115,32 @@ public class YourService extends KiboRpcService {
         while(!move_oder.empty()){
             Node n = move_oder.pop();
             PointI p = n.p;
-            Area currentArea = checkPoints.idxArea(p);
-            //while(!move_oder.empty() && move_oder.peek().dir.equals(n.dir)){
+            Point basePoint = api.getRobotKinematics().getPosition();//checkPoints.idx2Point(p);
             boolean can = true;
+            int D_cnt = 0;
             while(!move_oder.empty() && can){
                 Node tmp_n = move_oder.peek();
-                Area tmpArea = currentArea.mergeArea(checkPoints.idxArea(tmp_n.p));
+                Point destination = checkPoints.idx2Point(tmp_n.p);
                 for(Area koz: KOZs){
-                    if (koz.isIntersect(tmpArea)) {
-                        can = false;
-                        break;
+                    for (Point[] ps: koz.getPolys()){
+                        if(Utils.isPolyLineCollision(basePoint,destination,ps)){
+                            can = false;
+                            break;
+                        }
                     }
+                    if (!can)break;
                 }
                 if(can){
-                    currentArea = tmpArea;
                     n = move_oder.pop();
+                    D_cnt++;
                 }else{
                     break;
                 }
             }
             Point to = checkPoints.idx2Point(n.p.getX(), n.p.getY(), n.p.getZ());
-            Log.i("StellarCoders", String.format("From: %s. Destination: %s. Direction: %d",api.getRobotKinematics().getPosition().toString(),to.toString(),n.dir));
+            Log.i("StellarCoders", String.format("From: %s. Destination: %s. CombinedArea: %d",api.getRobotKinematics().getPosition().toString(),to.toString(),D_cnt));
             Result result = this.api.moveTo(to, q,true);
-            if(!result.hasSucceeded()){
+            if(result != null && !result.hasSucceeded()){
                 Log.i("StellarCoders", result.getMessage());
             }
         }

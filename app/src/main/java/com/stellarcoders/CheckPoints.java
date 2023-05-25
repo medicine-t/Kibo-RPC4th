@@ -26,7 +26,8 @@ public class CheckPoints {
     }
 
     public Area idxArea(PointI pi){
-        return new Area(pi.getX() - div_value,pi.getY() - div_value,pi.getZ() - div_value,pi.getX() + div_value,pi.getY() + div_value,pi.getZ() + div_value);
+        Point p = idx2Point(pi);
+        return new Area((float) p.getX() - div_value ,(float) p.getY() - div_value,(float) p.getZ() - div_value,(float) p.getX() + div_value,(float) p.getY() + div_value,(float) p.getZ() + div_value);
     }
 
     public  PointI Point2I(Point p){
