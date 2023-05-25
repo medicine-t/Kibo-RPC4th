@@ -10,13 +10,24 @@ public class CheckPoints {
     private final float height = -6.0f - (-10.5f); //4.5 //y
     private final float depth =  5.57f - 4.02f;// 1.55 //z
 
-    private final float div_value = 0.10f;
+    private final float div_value = 0.05f;
     private final float offset = 0.05f;
     public int num_div_x = (int) Math.ceil((length - 2 * offset) / div_value);
     public int num_div_y = (int) Math.ceil((height - 2 * offset) / div_value);
     public int num_div_z = (int) Math.ceil((depth - 2 * offset) / div_value);
     public Point idx2Point(int i, int j, int k){
         return new Point(offset + i*div_value + 9.5, offset + j*div_value - 10.5, offset + k*div_value + 4.02);
+    }
+    public Point idx2Point(PointI pi){
+        int i = pi.getX();
+        int j = pi.getY();
+        int k = pi.getZ();
+        return new Point(offset + i*div_value + 9.5, offset + j*div_value - 10.5, offset + k*div_value + 4.02);
+    }
+
+    public Area idxArea(PointI pi){
+        Point p = idx2Point(pi);
+        return new Area((float) p.getX() - div_value ,(float) p.getY() - div_value,(float) p.getZ() - div_value,(float) p.getX() + div_value,(float) p.getY() + div_value,(float) p.getZ() + div_value);
     }
 
     public  PointI Point2I(Point p){
@@ -46,6 +57,7 @@ public class CheckPoints {
                     }
                     for(Area koz: KOZs){
                         if(koz.isInclude(idx2Point(i,j,k)))can = false;
+                        if(koz.isIntersect(idxArea(new PointI(i,j,k))))can = false;
                     }
                     checkPoints[i][j][k] = can;
                 }

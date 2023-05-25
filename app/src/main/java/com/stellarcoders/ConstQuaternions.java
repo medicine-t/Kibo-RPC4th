@@ -16,11 +16,10 @@ public class ConstQuaternions {
             add(new Quaternion(0, 0 ,-1,0));
             add(new Quaternion(-0.5f,-0.5f,-0.5f,0.5f));
             add(new Quaternion(0,0,0,1));
-            add(new Quaternion(0,0.707f,0,0.707f));
         }
     };
 
-    final ArrayList<Quaternion> targets = new ArrayList<Quaternion>(){
+    public final ArrayList<Quaternion> targets = new ArrayList<Quaternion>(){
         {
             add(new Quaternion(0.707f, 0,0,0.707f));
             add(new Quaternion(0,0,0,1));
@@ -31,5 +30,6 @@ public class ConstQuaternions {
         }
     };
 
-    final Quaternion QRCodePos = new Quaternion(0,0,0,1);
+    public final Quaternion QRCodeTarget = new Quaternion(0,0,0,1);
+    public final Quaternion QRCodePos = new Quaternion(0,0.707f,0,0.707f);
 }

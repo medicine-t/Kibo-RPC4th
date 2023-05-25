@@ -2,58 +2,105 @@ package jp.jaxa.iss.kibo.rpc.defaultapk;
 
 import android.util.Log;
 
+import com.stellarcoders.Area;
 import com.stellarcoders.CheckPoints;
+import com.stellarcoders.ConstAreas;
 import com.stellarcoders.ConstPoints;
 import com.stellarcoders.ConstQuaternions;
+import com.stellarcoders.utils.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Stack;
 
 import gov.nasa.arc.astrobee.Result;
 import gov.nasa.arc.astrobee.types.Point;
 import gov.nasa.arc.astrobee.types.Quaternion;
 import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
-import com.stellarcoders.utils.*;
+
+import org.opencv.objdetect.QRCodeDetector;
 
 /**
  * Class meant to handle commands from the Ground Data System and execute them in Astrobee
  */
 
 public class YourService extends KiboRpcService {
+
     @Override
     protected void runPlan1(){
         // write your plan 1 here
         api.startMission();
 
-
+        ConstPoints pointData = new ConstPoints();
+        ConstQuaternions quaternions = new ConstQuaternions();
 
         api.moveTo(new Point(10.5,-10.0,4.5 ),new Quaternion(0,0,0,1),true);
         //this.moveDijkstra(api,new Point(10.5,-9.6,4.8 ),new Quaternion(0,0,0,1));
         Log.i("StellarCoders","Moved to Initial Point");
 
-        ConstPoints pointData = new ConstPoints();
-        ConstQuaternions quaternions = new ConstQuaternions();
-        List<Integer> activeTargets = api.getActiveTargets();
-        CheckPoints checkPoints = new CheckPoints();
-        for (int i = 0; i < activeTargets.size(); i++) {
-            activeTargets.set(i,activeTargets.get(i) - 1);
+        // Go to read QR-Code
+        Log.i("StellarCoders","Start Moving to QRCode position");
+        moveDijkstra(pointData.QRCodePos,quaternions.QRCodePos);
+
+        // READ QR DATA
+        QRCodeDetector qrCodeDetector = new QRCodeDetector();
+        api.flashlightControlFront(0.05f);
+        String qrString = qrCodeDetector.detectAndDecode(api.getMatNavCam());
+
+        Map<String,String> qrMap = new HashMap<String, String>() {{
+            put("JEM", "STAY_AT_JEM");
+            put("COLUMBUS", "GO_TO_COLUMBUS");
+            put("RACK1", "CHECK_RACK_1");
+            put("ASTROBEE", "I_AM_HERE");
+            put("INTBALL","LOOKING_FORWARD_TO_SEE_YOU");
+            put("BLANK","NO_PROBLEM");
+        }};
+        Log.i("StellarCoders",String.format("Read QR raw String is: %s",qrString));
+        qrString = qrMap.getOrDefault(qrString,"FAILED TO GET");
+        //
+        Log.i("StellarCoders",String.format("Read QR String is: %s",qrString));
+        Log.i("StellarCoders", String.format("Remain Time is %s",api.getTimeRemaining().get(1).toString()));
+
+        // Move Around phase
+        Map<Integer,Boolean> targetMapping = new HashMap<>();
+        while(2 * 60 * 1000 + 30 * 1000 <= api.getTimeRemaining().get(1)) { //remain time is [ms]
+            List<Integer> activeTargets = api.getActiveTargets();
+            CheckPoints checkPoints = new CheckPoints();
+            Point currentPos = api.getRobotKinematics().getPosition();
+            for (int i = 0; i < activeTargets.size(); i++) {
+                activeTargets.set(i, activeTargets.get(i) - 1);
+                targetMapping.put(activeTargets.get(i),false);
+            }
+
+            Integer targetIndex = activeTargets.get(0);
+            for(Map.Entry<Integer,Boolean> entry : targetMapping.entrySet()){
+                if(!entry.getValue() && Utils.distance3DSquare(currentPos,pointData.points.get(targetIndex)) > Utils.distance3DSquare(currentPos,pointData.points.get(entry.getKey()))){
+                    targetIndex = entry.getKey();
+                }
+            }
+
+
+            Log.i("StellarCoders", String.format("Target : %d",targetIndex));
+            //移動
+            moveDijkstra(pointData.points.get(targetIndex), quaternions.points.get(targetIndex));
+
+            /*
+            * ここで角度の調整など
+            * */
+            Result laserResult = api.laserControl(true);
+            if(laserResult != null && !laserResult.hasSucceeded())Log.i("StellarCoders",String.format("Laser toggle result : %s",laserResult.getMessage()));
+            api.takeTargetSnapshot(targetIndex + 1);
+            targetMapping.put(targetIndex,true);
+            Log.i("StellarCoders", String.format("Remain Time is %s",api.getTimeRemaining().get(1).toString()));
         }
 
 
-        //new Point(11.0,-9.5,5.0)
-        //api.moveTo(pointData.points.get(0),quaternions.points.get(0),true);
-        //this.moveDijkstra(api,new Point(11.0,-9.5,5.0));
-        Log.i("StellarCoders",String.format("Target : %d",activeTargets.get(0)));
-        moveDijkstra(pointData.points.get(activeTargets.get(0)),quaternions.points.get(activeTargets.get(0)));
-        api.laserControl(true);
-        api.takeTargetSnapshot(activeTargets.get(0));
-
-
+        // Go to Goal
         api.notifyGoingToGoal();
-        //api.moveTo(pointData.goal,quaternions.goal,true);
+        Log.i("StellarCoders","Start Moving to Goal");
         moveDijkstra(pointData.goal,quaternions.goal);
-        api.moveTo(pointData.start, quaternions.goal,true   );
-        api.reportMissionCompletion("hoge");
+        api.reportMissionCompletion(qrString);
     }
 
     void moveDijkstra( Point goal) {
@@ -62,18 +109,38 @@ public class YourService extends KiboRpcService {
     void moveDijkstra(Point goal, Quaternion q) {
         Log.i("StellarCoders",String.format("Current Pos %s",this.api.getRobotKinematics().getPosition().toString()));
         CheckPoints checkPoints = new CheckPoints();
+        Area[] KOZs = new ConstAreas().KOZs;
         Dijkstra3D dijManager = new Dijkstra3D();
         Stack<Node> move_oder = dijManager.dijkstra(checkPoints.Point2I(api.getRobotKinematics().getPosition()), checkPoints.Point2I(goal));
         while(!move_oder.empty()){
             Node n = move_oder.pop();
             PointI p = n.p;
-            while(!move_oder.empty() && move_oder.firstElement().dir.equals(n.dir)){
-                n = move_oder.pop();
+            Point basePoint = api.getRobotKinematics().getPosition();//checkPoints.idx2Point(p);
+            boolean can = true;
+            int D_cnt = 0;
+            while(!move_oder.empty() && can){
+                Node tmp_n = move_oder.peek();
+                Point destination = checkPoints.idx2Point(tmp_n.p);
+                for(Area koz: KOZs){
+                    for (Point[] ps: koz.getPolys()){
+                        if(Utils.isPolyLineCollision(basePoint,destination,ps)){
+                            can = false;
+                            break;
+                        }
+                    }
+                    if (!can)break;
+                }
+                if(can){
+                    n = move_oder.pop();
+                    D_cnt++;
+                }else{
+                    break;
+                }
             }
-            Point to = checkPoints.idx2Point(p.getX(), p.getY(), p.getZ());
-            Log.i("StellarCoders", String.format("From: %s. Destination: %s. Direction: %d",api.getRobotKinematics().getPosition().toString(),to.toString(),n.dir));
+            Point to = checkPoints.idx2Point(n.p.getX(), n.p.getY(), n.p.getZ());
+            Log.i("StellarCoders", String.format("From: %s. Destination: %s. CombinedArea: %d",api.getRobotKinematics().getPosition().toString(),to.toString(),D_cnt));
             Result result = this.api.moveTo(to, q,true);
-            if(!result.hasSucceeded()){
+            if(result != null && !result.hasSucceeded()){
                 Log.i("StellarCoders", result.getMessage());
             }
         }
@@ -86,11 +153,13 @@ public class YourService extends KiboRpcService {
     @Override
     protected void runPlan2(){
         // write your plan 2 here
+        this.runPlan1();
     }
 
     @Override
     protected void runPlan3(){
         // write your plan 3 here
+        this.runPlan1();
     }
 
 }
