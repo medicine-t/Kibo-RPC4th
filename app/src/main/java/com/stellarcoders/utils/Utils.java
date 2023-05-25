@@ -65,7 +65,7 @@ public class Utils {
         }
 
         Log.i("StellarCoders",String.format("Collision t:%e, u:%e, v:%e",t,u,v));
-        Log.i("StellarCoders",String.format("Vector norm is %e, t - targetNorm",targetNorm,t - targetNorm));
+        Log.i("StellarCoders",String.format("Vector norm is %e, t - targetNorm %e",targetNorm,t - targetNorm));
         return true ;
     }
 }
