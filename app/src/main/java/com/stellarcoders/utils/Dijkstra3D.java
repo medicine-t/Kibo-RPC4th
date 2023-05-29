@@ -4,6 +4,8 @@ import gov.nasa.arc.astrobee.types.Point;
 import com.stellarcoders.CheckPoints;
 import com.stellarcoders.utils.PointI;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.PriorityQueue;
 import java.util.Stack;
 import android.util.Log;
@@ -62,10 +64,7 @@ public class Dijkstra3D {
             1.7, 1.4, 1.7
     };
 
-
-
-
-    public Stack<Node> dijkstra(PointI start, PointI goal){
+    public ArrayList<Point> dijkstra(PointI start, PointI goal){
         Log.i("StellarCoders",String.format("Dijkstra Called"));
         Log.i("StellarCoders",String.format("Dijkstra Goal is %s",goal.toString()));
         PriorityQueue<Node> que = new PriorityQueue<Node>(new NodeComparator());
@@ -121,15 +120,17 @@ public class Dijkstra3D {
 
 
         Log.i("StellarCoders","Dijkstra finish. Start construct path");
+        CheckPoints cp = new CheckPoints();
         // re-construct path
-        Stack<Node> path = new Stack<>();
-        path.push(prev[goal.getX()][goal.getY()][goal.getZ()]);
+        ArrayList<Point> path = new ArrayList<>();
+        path.add(cp.idx2Point(prev[goal.getX()][goal.getY()][goal.getZ()].p));
         trace = prev[goal.getX()][goal.getY()][goal.getZ()];
         while(!trace.p.isNan()){
-            path.push(trace);
+            path.add(cp.idx2Point(trace.p));
             trace = prev[trace.p.getX()][trace.p.getY()][trace.p.getZ()];
         }
         Log.i("StellarCoders","Dijkstra path construct finished");
+        Collections.reverse(path);
         return path;
     }
 

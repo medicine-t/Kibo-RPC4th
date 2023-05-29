@@ -9,6 +9,7 @@ import com.stellarcoders.ConstPoints;
 import com.stellarcoders.ConstQuaternions;
 import com.stellarcoders.utils.*;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,8 +46,15 @@ public class YourService extends KiboRpcService {
 
         // READ QR DATA
         QRCodeDetector qrCodeDetector = new QRCodeDetector();
-        api.flashlightControlFront(0.05f);
-        String qrString = qrCodeDetector.detectAndDecode(api.getMatNavCam());
+        api.flashlightControlFront(0.1f);
+        String qrString = "";
+        try {
+            qrString= qrCodeDetector.detectAndDecode(Utils.calibratedNavCam(api));
+            api.saveMatImage(Utils.calibratedNavCam(api),"CalibratedQrImage.png");
+        }catch (Error e){
+            Log.e("StellarCoders",e.getMessage());
+        }
+
 
         Map<String,String> qrMap = new HashMap<String, String>() {{
             put("JEM", "STAY_AT_JEM");
@@ -88,6 +96,14 @@ public class YourService extends KiboRpcService {
             /*
             * ここで角度の調整など
             * */
+            try{
+                Log.i("StellarCoders",String.format("Detected Markers: %s",Utils.searchMarker(Utils.calibratedNavCam(api)).toString()));
+                api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
+            } catch (Error e){
+                Log.e("StellarCoders",e.getMessage());
+            }
+
+            //
             Result laserResult = api.laserControl(true);
             if(laserResult != null && !laserResult.hasSucceeded())Log.i("StellarCoders",String.format("Laser toggle result : %s",laserResult.getMessage()));
             api.takeTargetSnapshot(targetIndex + 1);
@@ -112,45 +128,48 @@ public class YourService extends KiboRpcService {
         CheckPoints checkPoints = new CheckPoints();
         Area[] KOZs = new ConstAreas().KOZs;
         Dijkstra3D dijManager = new Dijkstra3D();
-        Stack<Node> move_oder = dijManager.dijkstra(checkPoints.Point2I(api.getRobotKinematics().getPosition()), checkPoints.Point2I(goal));
-        while(!move_oder.empty()){
-            Node n = move_oder.pop();
-            PointI p = n.p;
-            Point basePoint = api.getRobotKinematics().getPosition();//checkPoints.idx2Point(p);
-            boolean can = true;
-            int D_cnt = 0;
-            while(!move_oder.empty() && can){
-                Node tmp_n = move_oder.peek();
-                Point destination = checkPoints.idx2Point(tmp_n.p);
+        ArrayList<Point> move_oder = dijManager.dijkstra(checkPoints.Point2I(api.getRobotKinematics().getPosition()), checkPoints.Point2I(goal));
+        move_oder.add(goal);
+
+        for(int idx = 0;idx < move_oder.size();idx++){
+            Point apiPoint = api.getRobotKinematics().getPosition();
+            Point basePoint = new Point(apiPoint.getX(), apiPoint.getY(),apiPoint.getZ());//new Point(move_oder.get(idx).getX(),move_oder.get(idx).getY(),move_oder.get(idx).getZ());
+            int max_idx = idx;
+            Point validDestination = new Point(basePoint.getX(),basePoint.getY(),basePoint.getZ());
+            for(int next_idx = idx;next_idx < move_oder.size();next_idx++){
+                boolean can = true;
+                Point destination = new Point(move_oder.get(next_idx).getX(),move_oder.get(next_idx).getY(),move_oder.get(next_idx).getZ());
                 for(Area koz: KOZs){
                     for (Point[] ps: koz.getPolys()){
-                        if(Utils.isPolyLineCollision(basePoint,destination,ps)){
+                        boolean collisionCheckRet = Utils.isPolyLineCollision(basePoint,destination,ps);
+                        //Log.i("StellarCoders",String.format("Collision Check Result [Utils.isPolyLineCollision: %b, FROM: %s, TO: %s]",collisionCheckRet,basePoint,destination));
+                        if(collisionCheckRet) {
                             can = false;
-                            break;
                         }
                     }
-                    if (!can)break;
                 }
                 if(can){
-                    n = move_oder.pop();
-                    D_cnt++;
-                }else{
-                    break;
+                    if(max_idx < next_idx) {
+                        max_idx = next_idx;
+                        validDestination = new Point(destination.getX(),destination.getY(),destination.getZ());
+                        Log.i("StellarCoders",String.format("Valid Route Updated! FROM: %s, TO: %s",basePoint,destination));
+                    }
                 }
             }
-            Point to = checkPoints.idx2Point(n.p.getX(), n.p.getY(), n.p.getZ());
-            Log.i("StellarCoders", String.format("From: %s. Destination: %s. CombinedArea: %d",api.getRobotKinematics().getPosition().toString(),to.toString(),D_cnt));
+            idx = max_idx;
+            Point to = validDestination;
+            Log.i("StellarCoders", String.format("From: %s. Destination: %s.",api.getRobotKinematics().getPosition().toString(), to));
             Result result = this.api.moveTo(to, q,true);
             if(targetIndex != -1 && !api.getActiveTargets().contains(targetIndex + 1)){
                 Log.i("StellarCoders","Destination target now become de-active.");
                 return;
             }
             if(result != null && !result.hasSucceeded()){
-                Log.i("StellarCoders", result.getMessage());
+                Log.e("StellarCoders", result.getMessage());
+                Log.e("StellarCoders",String.format("Failed during moving %s to %s",api.getRobotKinematics().getPosition(),to));
             }
         }
 
-        api.moveTo(goal,q,true); //厳密はポジションではないのでそこまで移動
         Log.i("StellarCoders","Moved to Point");
         Log.i("StellarCoders",String.format("Current Pos %s",this.api.getRobotKinematics().getPosition().toString()));
     }
