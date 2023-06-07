@@ -2,6 +2,9 @@ package com.stellarcoders.utils;
 
 import android.util.Log;
 
+import com.stellarcoders.CheckPoints;
+import com.stellarcoders.ConstQuaternions;
+
 import org.opencv.aruco.Aruco;
 import org.opencv.aruco.Dictionary;
 import org.opencv.core.CvType;
@@ -9,7 +12,10 @@ import org.opencv.core.Mat;
 import org.opencv.imgproc.Imgproc;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.Vector;
 
 import gov.nasa.arc.astrobee.types.Point;
 import gov.nasa.arc.astrobee.types.Quaternion;
@@ -120,15 +126,110 @@ public class Utils {
         return img;
     }
 
+    public static Mat drawMarkerPoseEstimation(KiboRpcApi api){
+        double[][] camStatistics = api.getNavCamIntrinsics();
+        double[] camMtx = camStatistics[0];
+        double[] dist = camStatistics[1];
+        Mat camMtxMat = new Mat(3,3, CvType.CV_64FC1);
+        camMtxMat.put(0,0,camMtx);
+        Mat distMat = new Mat(1,5,CvType.CV_64FC1);
+        distMat.put(0,0,dist);
+
+        Mat navCam = api.getMatNavCam();
+        ArrayList<Integer> ret = new ArrayList<>();
+        List<Mat> corners = new ArrayList<>();
+        Mat markerIds = new Mat();
+        Dictionary arucoDict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250);
+        Aruco.detectMarkers(navCam,arucoDict,corners,markerIds);
+
+        Mat rvecs = new Mat();
+        Mat tvecs = new Mat();
+        Mat _objPoints = new Mat();
+
+        Aruco.estimatePoseSingleMarkers(corners,0.05f,camMtxMat,distMat,rvecs,tvecs,_objPoints);
+        for (int i = 0; i < rvecs.height(); i++) {
+            Aruco.drawAxis(navCam,camMtxMat,distMat,rvecs.row(i),tvecs.row(i),0.1f);
+        }
+        return navCam;
+    }
+
+    public static Vector3 cam2center = new Vector3(0 * 0.1177, -0.0422, -0.0826).prod(-1);
+    public static Vector3 center2laser = new Vector3(0 * 0.1302, 0.0572, -0.1111);
+
+    public static Point applyPoint(Point p,Vector3 v){
+        return new Point(p.getX() + v.getX(),p.getY() + v.getY(), p.getZ() + v.getZ());
+    }
+
+    public static Vector3 getDiffFromCam(KiboRpcApi api,int targetId){
+        double[][] biasMarker = {
+                {-0.1,0.0375,0},
+                {0.1,0.0375,0},
+                {0.1,-0.0375,0},
+                {-0.1,-0.0375,0},
+        };
+
+        ConstQuaternions cq = new ConstQuaternions();
+        double[][] camStatistics = api.getNavCamIntrinsics();
+        double[] camMtx = camStatistics[0];
+        double[] dist = camStatistics[1];
+        Mat camMtxMat = new Mat(3,3, CvType.CV_64FC1);
+        camMtxMat.put(0,0,camMtx);
+        Mat distMat = new Mat(1,5,CvType.CV_64FC1);
+        distMat.put(0,0,dist);
+
+        Mat navCam = api.getMatNavCam();
+        ArrayList<Integer> ret = new ArrayList<>();
+        List<Mat> corners = new ArrayList<>();
+        Mat markerIds = new Mat();
+        Dictionary arucoDict = Aruco.getPredefinedDictionary(Aruco.DICT_5X5_250);
+        Aruco.detectMarkers(navCam,arucoDict,corners,markerIds);
+
+        Mat rvecs = new Mat();
+        Mat tvecs = new Mat();
+        Mat _objPoints = new Mat();
+
+        Aruco.estimatePoseSingleMarkers(corners,0.05f,camMtxMat,distMat,rvecs,tvecs,_objPoints);
+        if(rvecs.empty()){
+            return new Vector3(0,0,0);
+        }
+
+        ArrayList<Integer> ids = Utils.searchMarker(Utils.calibratedNavCam(api));
+        Collections.reverse(ids);
+        Log.i("StellarCoders",String.format("Detected : %s",ids));
+        if(ids.size() == 0) return new Vector3(0,0,0);
+        Vector3 cam2laser = Utils.cam2center.add(Utils.center2laser); // 0,0.0994, -0.0285
+
+        Vector3 target = new Vector3(0,0,0);
+        for (int i = 0; i < rvecs.height(); i++) {
+            double[] relationalTarget = new double[]{0,0,0};
+            relationalTarget = tvecs.get(i,0);
+            //TODO: ここの座標がシミュレーターから推察できる結果とズレているので調査
+            Log.i("StellarCoders",String.format("UnBiased %s", Arrays.toString(relationalTarget)));
+            relationalTarget[0] += biasMarker[(ids.get(i) - 1 ) % 4][0];
+            relationalTarget[1] += biasMarker[(ids.get(i) - 1 )% 4][1];
+            relationalTarget[2] += biasMarker[(ids.get(i) - 1 )% 4][2];
+            Log.i("StellarCoders",String.format("Biased %s", Arrays.toString(relationalTarget)));
+            target = target.add(new Vector3(relationalTarget[0] - cam2laser.getY(),relationalTarget[1] - cam2laser.getZ(),0));
+        }
+        Vector3 v = target.prod(1.0 / rvecs.height());
+        Log.i("StellarCoders",String.format("Average diffs : %.3f %.3f %.3f",v.getX(),v.getY(),v.getZ()));
+        Vector3 camPositionFixed = v;//.add(Utils.cam2center);
+        //camPositionFixed = camPositionFixed.add(Utils.center2laser);
+        Log.i("StellarCoders",String.format("Un-Rotated Coordinate : %.3f %.3f %.3f",camPositionFixed.getX(),camPositionFixed.getY(),camPositionFixed.getZ()));
+        //Quaternion q = Utils.inverseQuaternion(api.getRobotKinematics().getOrientation());
+        //Log.i("StellarCoders",String.format("Rotate Quaternion : %.3fi + %.3fj + %.3fk + %.3f",q.getX(),q.getY(),q.getZ(),q.getW()));
+        Vector3 rotated_v = Utils.target2transpose((ids.get(0) - 1) / 4,camPositionFixed);
+        return rotated_v;
+    }
 
     /**
-     * Pに対してQを適応する
+     * qp
      * @param p
      * @param q
      * @return
      * https://qiita.com/drken/items/0639cf34cce14e8d58a5#1-4-%E3%82%AF%E3%82%A9%E3%83%BC%E3%82%BF%E3%83%8B%E3%82%AA%E3%83%B3%E3%81%AE%E3%81%8B%E3%81%91%E7%AE%97
      */
-    public static Quaternion quaternionProd(Quaternion p,Quaternion q){
+    public static Quaternion quaternionProd(Quaternion q,Quaternion p){
         return new Quaternion(
                 q.getW() * p.getX() - q.getZ() * p.getY() + q.getY() * p.getZ() + q.getX() * p.getW(),
                 q.getZ() * p.getX() + q.getW() * p.getY() - q.getX() * p.getZ() + q.getY() * p.getW(),
@@ -139,5 +240,42 @@ public class Utils {
 
     public static String Point2str(Point p){
         return String.format("Point [%.3f, %.3f, %.3f]", p.getX(),p.getY(),p.getZ());
+    }
+
+    /**
+     *      * 0: xyz
+     *      * 1: xzy
+     *      * 2: yxz
+     *      * 3: yzx
+     *      * 4: zxy
+     *      * 5: zyx
+     * @param target
+     * @return
+     */
+    public static Vector3 target2transpose(int target,Vector3 v){
+        if(target == 0){
+            //local  xyz -> global xzy
+            //global xyz -> local xzy
+            return new Vector3(v.getX(),v.getZ(),v.getY());
+        }else if(target == 1){
+            //local xyz -> global x -y -z
+            //global x, -y, -z;
+            return new Vector3(v.getX(),-v.getY(),-v.getZ());
+        }else if(target == 2){
+            // local xyz -> global yxz
+            // global y, x, z
+            return new Vector3(v.getY(),v.getX(),v.getZ());
+        }else if(target == 3){
+            //local xyz -> global -yz-x
+            //global xyz -> -z,-x,y
+            return new Vector3(-v.getZ(),-v.getX(),v.getY());
+        }else if(target == 4){// xyz
+            return new Vector3(v.getX(),v.getY(),v.getZ());
+        }else if(target == 5){
+            //local xyz -> yzx
+            //global z,x,y
+            return new Vector3(v.getZ(),v.getX(),v.getY());
+        }
+        return new Vector3(0,0,0);
     }
 }

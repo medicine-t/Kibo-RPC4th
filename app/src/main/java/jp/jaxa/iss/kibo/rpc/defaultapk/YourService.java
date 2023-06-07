@@ -14,10 +14,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Stack;
+import java.util.Vector;
 
 import gov.nasa.arc.astrobee.Result;
 import gov.nasa.arc.astrobee.types.Point;
 import gov.nasa.arc.astrobee.types.Quaternion;
+import gov.nasa.arc.astrobee.types.Vec3d;
 import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
 
 import org.opencv.objdetect.QRCodeDetector;
@@ -46,7 +48,7 @@ public class YourService extends KiboRpcService {
 
         // READ QR DATA
         QRCodeDetector qrCodeDetector = new QRCodeDetector();
-        api.flashlightControlFront(0.1f);
+        api.flashlightControlFront(0.3f);
         String qrString = "";
         try {
             qrString= qrCodeDetector.detectAndDecode(Utils.calibratedNavCam(api));
@@ -91,14 +93,33 @@ public class YourService extends KiboRpcService {
 
             Log.i("StellarCoders", String.format("Target : %d",targetIndex));
             //移動
-            moveDijkstra(pointData.points.get(targetIndex), quaternions.points.get(targetIndex),targetIndex);
-
+            int result = moveDijkstra(pointData.points.get(targetIndex), quaternions.points.get(targetIndex),targetIndex);
+            if(result == 1){
+                continue;
+            }
+            Log.i("StellarCoders", String.format("Move finished. Current : %s",api.getRobotKinematics().getPosition().toString()));
+            Log.i("StellarCoders", String.format("Target Position was : %s",pointData.points.get(targetIndex).toString()));
             /*
             * ここで角度の調整など
             * */
             try{
-                Log.i("StellarCoders",String.format("Detected Markers: %s",Utils.searchMarker(Utils.calibratedNavCam(api)).toString()));
-                api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
+                for (int cnt = 0; cnt < 1; cnt++) {
+                    api.laserControl(true);
+                    Log.i("StellarCoders",String.format("Detected Markers: %s",Utils.searchMarker(Utils.calibratedNavCam(api))));
+                    api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
+                    api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Detected_Markers_Position_%s.png", api.getTimeRemaining().get(1).toString()));
+
+                    Vector3 rel = Utils.getDiffFromCam(api,targetIndex);
+                    Point currentPosition = api.getRobotKinematics().getPosition();
+                    Log.e("StellarCoders",String.format("relative %.3f, %.3f, %.3f",rel.getX(),rel.getY(),rel.getZ()));
+                    //api.relativeMoveTo(new Point(rel.getX(),rel.getY(),rel.getZ()), quaternions.points.get(targetIndex),true);
+                    rel = rel.add(new Vector3(currentPosition.getX(),currentPosition.getY(),currentPosition.getZ()));
+                    api.moveTo(new Point(rel.getX(),rel.getY(),rel.getZ()),quaternions.points.get(targetIndex),true);
+                    
+                    api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
+                    api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Detected_Markers_Position_%s.png",api.getTimeRemaining().get(1).toString()));
+                    api.laserControl(false);
+                }
             } catch (Error e){
                 Log.e("StellarCoders",e.getMessage());
             }
@@ -123,7 +144,7 @@ public class YourService extends KiboRpcService {
         moveDijkstra(goal,q,-1);
     }
 
-    void moveDijkstra(Point goal, Quaternion q, int targetIndex) {
+    int moveDijkstra(Point goal, Quaternion q, int targetIndex) {
         Log.i("StellarCoders",String.format("Current Pos %s",this.api.getRobotKinematics().getPosition().toString()));
         CheckPoints checkPoints = new CheckPoints();
         Area[] KOZs = new ConstAreas().KOZs;
@@ -162,7 +183,7 @@ public class YourService extends KiboRpcService {
             Result result = this.api.moveTo(to, q,true);
             if(targetIndex != -1 && !api.getActiveTargets().contains(targetIndex + 1)){
                 Log.i("StellarCoders","Destination target now become de-active.");
-                return;
+                return 1;
             }
             if(result != null && !result.hasSucceeded()){
                 Log.e("StellarCoders", result.getMessage());
@@ -172,6 +193,7 @@ public class YourService extends KiboRpcService {
 
         Log.i("StellarCoders","Moved to Point");
         Log.i("StellarCoders",String.format("Current Pos %s",this.api.getRobotKinematics().getPosition().toString()));
+        return 0;
     }
 
     @Override
