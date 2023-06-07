@@ -115,7 +115,7 @@ public class YourService extends KiboRpcService {
                     //api.relativeMoveTo(new Point(rel.getX(),rel.getY(),rel.getZ()), quaternions.points.get(targetIndex),true);
                     rel = rel.add(new Vector3(currentPosition.getX(),currentPosition.getY(),currentPosition.getZ()));
                     api.moveTo(new Point(rel.getX(),rel.getY(),rel.getZ()),quaternions.points.get(targetIndex),true);
-                    
+
                     api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
                     api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Detected_Markers_Position_%s.png",api.getTimeRemaining().get(1).toString()));
                     api.laserControl(false);

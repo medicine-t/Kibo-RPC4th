@@ -206,8 +206,8 @@ public class Utils {
             //TODO: ここの座標がシミュレーターから推察できる結果とズレているので調査
             Log.i("StellarCoders",String.format("UnBiased %s", Arrays.toString(relationalTarget)));
             relationalTarget[0] += biasMarker[(ids.get(i) - 1 ) % 4][0];
-            relationalTarget[1] += biasMarker[(ids.get(i) - 1 )% 4][1];
-            relationalTarget[2] += biasMarker[(ids.get(i) - 1 )% 4][2];
+            relationalTarget[1] += biasMarker[(ids.get(i) - 1 ) % 4][1];
+            relationalTarget[2] += biasMarker[(ids.get(i) - 1 ) % 4][2];
             Log.i("StellarCoders",String.format("Biased %s", Arrays.toString(relationalTarget)));
             target = target.add(new Vector3(relationalTarget[0] - cam2laser.getY(),relationalTarget[1] - cam2laser.getZ(),0));
         }
