@@ -53,11 +53,11 @@ public class Area {
     public ArrayList<Point[]> getPolys(){
         ArrayList<Point[]> polys = new ArrayList<>();
         // z軸並行
-        polys.add(new Point[]{new Point(x_max,y_max,z_max), new Point(x_min,y_min,z_max), new Point(x_min,y_max,z_max)});
-        polys.add(new Point[]{new Point(x_max,y_max,z_max), new Point(x_max,y_min,z_max), new Point(x_min,y_max,z_max)});
+        polys.add(new Point[]{new Point(x_max,y_max,z_max), new Point(x_min,y_max,z_max), new Point(x_min,y_min,z_max)});
+        polys.add(new Point[]{new Point(x_max,y_max,z_max), new Point(x_max,y_min,z_max), new Point(x_min,y_min,z_max)});
 
         polys.add(new Point[]{new Point(x_max,y_max,z_min), new Point(x_min,y_min,z_min), new Point(x_min,y_max,z_min)});
-        polys.add(new Point[]{new Point(x_max,y_max,z_min), new Point(x_max,y_min,z_min), new Point(x_min,y_max,z_min)});
+        polys.add(new Point[]{new Point(x_max,y_max,z_min), new Point(x_max,y_min,z_min), new Point(x_min,y_min,z_min)});
 
         // y軸並行
         polys.add(new Point[]{new Point(x_min,y_max,z_min), new Point(x_max,y_max,z_min), new Point(x_max,y_max,z_max)});

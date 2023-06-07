@@ -44,4 +44,5 @@ public class ConstPoints {
     
     public final Point QRCodePos = new Point(11.369,-8.5518,4.48);
     public final Point QRCodeTarget = new Point(11.381944,-8.566172 ,3.76203);
+
 }
