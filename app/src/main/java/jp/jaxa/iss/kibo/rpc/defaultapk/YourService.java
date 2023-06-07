@@ -20,6 +20,7 @@ import gov.nasa.arc.astrobee.Result;
 import gov.nasa.arc.astrobee.types.Point;
 import gov.nasa.arc.astrobee.types.Quaternion;
 import gov.nasa.arc.astrobee.types.Vec3d;
+import jp.jaxa.iss.kibo.rpc.api.KiboRpcApi;
 import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
 
 import org.opencv.objdetect.QRCodeDetector;
@@ -46,37 +47,12 @@ public class YourService extends KiboRpcService {
         Log.i("StellarCoders","Start Moving to QRCode position");
         moveDijkstra(pointData.QRCodePos,quaternions.QRCodePos);
 
-        // READ QR DATA
-        QRCodeDetector qrCodeDetector = new QRCodeDetector();
-        api.flashlightControlFront(0.3f);
-        String qrString = "";
-        try {
-            qrString= qrCodeDetector.detectAndDecode(Utils.calibratedNavCam(api));
-            api.saveMatImage(Utils.calibratedNavCam(api),"CalibratedQrImage.png");
-        }catch (Error e){
-            Log.e("StellarCoders",e.getMessage());
-        }
-
-
-        Map<String,String> qrMap = new HashMap<String, String>() {{
-            put("JEM", "STAY_AT_JEM");
-            put("COLUMBUS", "GO_TO_COLUMBUS");
-            put("RACK1", "CHECK_RACK_1");
-            put("ASTROBEE", "I_AM_HERE");
-            put("INTBALL","LOOKING_FORWARD_TO_SEE_YOU");
-            put("BLANK","NO_PROBLEM");
-        }};
-        Log.i("StellarCoders",String.format("Read QR raw String is: %s",qrString));
-        qrString = qrMap.getOrDefault(qrString,"FAILED TO GET");
-        //
-        Log.i("StellarCoders",String.format("Read QR String is: %s",qrString));
-        Log.i("StellarCoders", String.format("Remain Time is %s",api.getTimeRemaining().get(1).toString()));
+        String qrString = readQRCode(api);
 
         // Move Around phase
         Map<Integer,Boolean> targetMapping = new HashMap<>();
         while(2 * 60 * 1000 + 30 * 1000 <= api.getTimeRemaining().get(1)) { //remain time is [ms]
             List<Integer> activeTargets = api.getActiveTargets();
-            CheckPoints checkPoints = new CheckPoints();
             Point currentPos = api.getRobotKinematics().getPosition();
             for (int i = 0; i < activeTargets.size(); i++) {
                 activeTargets.set(i, activeTargets.get(i) - 1);
@@ -112,7 +88,6 @@ public class YourService extends KiboRpcService {
                     Vector3 rel = Utils.getDiffFromCam(api,targetIndex);
                     Point currentPosition = api.getRobotKinematics().getPosition();
                     Log.e("StellarCoders",String.format("relative %.3f, %.3f, %.3f",rel.getX(),rel.getY(),rel.getZ()));
-                    //api.relativeMoveTo(new Point(rel.getX(),rel.getY(),rel.getZ()), quaternions.points.get(targetIndex),true);
                     rel = rel.add(new Vector3(currentPosition.getX(),currentPosition.getY(),currentPosition.getZ()));
                     api.moveTo(new Point(rel.getX(),rel.getY(),rel.getZ()),quaternions.points.get(targetIndex),true);
 
@@ -132,7 +107,6 @@ public class YourService extends KiboRpcService {
             Log.i("StellarCoders", String.format("Remain Time is %s",api.getTimeRemaining().get(1).toString()));
         }
 
-
         // Go to Goal
         api.notifyGoingToGoal();
         Log.i("StellarCoders","Start Moving to Goal");
@@ -144,17 +118,44 @@ public class YourService extends KiboRpcService {
         moveDijkstra(goal,q,-1);
     }
 
-    int moveDijkstra(Point goal, Quaternion q, int targetIndex) {
-        Log.i("StellarCoders",String.format("Current Pos %s",this.api.getRobotKinematics().getPosition().toString()));
-        CheckPoints checkPoints = new CheckPoints();
-        Area[] KOZs = new ConstAreas().KOZs;
-        Dijkstra3D dijManager = new Dijkstra3D();
-        ArrayList<Point> move_oder = dijManager.dijkstra(checkPoints.Point2I(api.getRobotKinematics().getPosition()), checkPoints.Point2I(goal));
-        move_oder.add(goal);
+    void updateTargetInfo(){
 
+    }
+    String readQRCode(KiboRpcApi api){
+        // READ QR DATA
+        QRCodeDetector qrCodeDetector = new QRCodeDetector();
+        api.flashlightControlFront(0.3f);
+        String qrString = "";
+        try {
+            qrString= qrCodeDetector.detectAndDecode(Utils.calibratedNavCam(api));
+            api.saveMatImage(Utils.calibratedNavCam(api),"CalibratedQrImage.png");
+        }catch (Error e){
+            Log.e("StellarCoders",e.getMessage());
+        }
+
+
+        Map<String,String> qrMap = new HashMap<String, String>() {{
+            put("JEM", "STAY_AT_JEM");
+            put("COLUMBUS", "GO_TO_COLUMBUS");
+            put("RACK1", "CHECK_RACK_1");
+            put("ASTROBEE", "I_AM_HERE");
+            put("INTBALL","LOOKING_FORWARD_TO_SEE_YOU");
+            put("BLANK","NO_PROBLEM");
+        }};
+        Log.i("StellarCoders",String.format("Read QR raw String is: %s",qrString));
+        qrString = qrMap.getOrDefault(qrString,"FAILED TO GET");
+        //
+        Log.i("StellarCoders",String.format("Read QR String is: %s",qrString));
+        Log.i("StellarCoders", String.format("Remain Time is %s",api.getTimeRemaining().get(1).toString()));
+        return qrString;
+    }
+
+    ArrayList<Point> concatPath(ArrayList<Point> move_oder){
+        ArrayList<Point> concatenated = new ArrayList<>();
+        Area[] KOZs = new ConstAreas().KOZs;
+        Point from = api.getRobotKinematics().getPosition();
         for(int idx = 0;idx < move_oder.size();idx++){
-            Point apiPoint = api.getRobotKinematics().getPosition();
-            Point basePoint = new Point(apiPoint.getX(), apiPoint.getY(),apiPoint.getZ());//new Point(move_oder.get(idx).getX(),move_oder.get(idx).getY(),move_oder.get(idx).getZ());
+            Point basePoint = new Point(from.getX(), from.getY(),from.getZ());
             int max_idx = idx;
             Point validDestination = new Point(basePoint.getX(),basePoint.getY(),basePoint.getZ());
             for(int next_idx = idx;next_idx < move_oder.size();next_idx++){
@@ -163,7 +164,6 @@ public class YourService extends KiboRpcService {
                 for(Area koz: KOZs){
                     for (Point[] ps: koz.getPolys()){
                         boolean collisionCheckRet = Utils.isPolyLineCollision(basePoint,destination,ps);
-                        //Log.i("StellarCoders",String.format("Collision Check Result [Utils.isPolyLineCollision: %b, FROM: %s, TO: %s]",collisionCheckRet,basePoint,destination));
                         if(collisionCheckRet) {
                             can = false;
                         }
@@ -179,15 +179,26 @@ public class YourService extends KiboRpcService {
             }
             idx = max_idx;
             Point to = validDestination;
-            Log.i("StellarCoders", String.format("From: %s. Destination: %s.",api.getRobotKinematics().getPosition().toString(), to));
-            Result result = this.api.moveTo(to, q,true);
-            if(targetIndex != -1 && !api.getActiveTargets().contains(targetIndex + 1)){
-                Log.i("StellarCoders","Destination target now become de-active.");
-                return 1;
-            }
-            if(result != null && !result.hasSucceeded()){
-                Log.e("StellarCoders", result.getMessage());
-                Log.e("StellarCoders",String.format("Failed during moving %s to %s",api.getRobotKinematics().getPosition(),to));
+            concatenated.add(to);
+            from = new Point(to.getX(),to.getY(),to.getZ());
+        }
+
+        return  concatenated;
+    }
+
+    int moveDijkstra(Point goal, Quaternion q, int targetIndex) {
+        Log.i("StellarCoders",String.format("Current Pos %s",this.api.getRobotKinematics().getPosition().toString()));
+        CheckPoints checkPoints = new CheckPoints();
+        Dijkstra3D dijManager = new Dijkstra3D();
+        ArrayList<Point> move_oder = dijManager.dijkstra(api.getRobotKinematics().getPosition(),goal);
+
+        ArrayList<Point> concatenated = concatPath(move_oder);
+        for (int i = 0; i < concatenated.size(); i++) {
+            try{
+                api.moveTo(concatenated.get(i),q,true);
+            }catch (Error e){
+                Log.e("StellarCoders",e.getMessage());
+                return -1;
             }
         }
 

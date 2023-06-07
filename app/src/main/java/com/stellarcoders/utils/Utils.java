@@ -242,6 +242,24 @@ public class Utils {
         return String.format("Point [%.3f, %.3f, %.3f]", p.getX(),p.getY(),p.getZ());
     }
 
+    // return millisecond
+    public static double calcAchieveTime(double distance){
+        if (distance < 2.5){ // 最高速まで行かずに減速を開始するとき
+            // v-t図書いて面積Sを求めてS = distanceとしてtを求めるといい
+            return 2 * Math.sqrt(10 * distance) * 1000;
+        }else {
+            return ((distance - 2.5) * 2 + 10) * 1000 ;
+        }
+    }
+
+    public static double calcMovingTime(ArrayList<Point> move_oder){
+        double ret = 0.0;
+        for (int i = 0; i < move_oder.size() - 1; i++) {
+            ret += Utils.calcAchieveTime(Math.sqrt(Utils.distance3DSquare(move_oder.get(i),move_oder.get(i + 1))));
+        }
+        return ret;
+    }
+
     /**
      *      * 0: xyz
      *      * 1: xzy
