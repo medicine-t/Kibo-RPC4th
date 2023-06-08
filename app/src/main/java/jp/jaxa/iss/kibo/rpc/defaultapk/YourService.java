@@ -23,6 +23,7 @@ import gov.nasa.arc.astrobee.types.Vec3d;
 import jp.jaxa.iss.kibo.rpc.api.KiboRpcApi;
 import jp.jaxa.iss.kibo.rpc.api.KiboRpcService;
 
+import org.opencv.core.Mat;
 import org.opencv.objdetect.QRCodeDetector;
 
 /**
@@ -43,17 +44,17 @@ public class YourService extends KiboRpcService {
         //this.moveDijkstra(api,new Point(10.5,-9.6,4.8 ),new Quaternion(0,0,0,1));
         Log.i("StellarCoders","Moved to Initial Point");
 
-        // Go to read QR-Code
-        Log.i("StellarCoders","Start Moving to QRCode position");
-        moveDijkstra(pointData.QRCodePos,quaternions.QRCodePos);
-
-        String qrString = readQRCode(api);
+        String qrString = "";
 
         // Move Around phase
         Map<Integer,Boolean> targetMapping = new HashMap<>();
+        // QRCode
+        final int QRCODE_POSITION_TARGET = 6;
+        targetMapping.put(QRCODE_POSITION_TARGET,false);
         while(2 * 60 * 1000 + 30 * 1000 <= api.getTimeRemaining().get(1)) { //remain time is [ms]
             List<Integer> activeTargets = api.getActiveTargets();
             Point currentPos = api.getRobotKinematics().getPosition();
+            Log.i("StellarCoders",String.format("Remain Targets : %s",activeTargets.toString()));
             for (int i = 0; i < activeTargets.size(); i++) {
                 activeTargets.set(i, activeTargets.get(i) - 1);
                 targetMapping.put(activeTargets.get(i),false);
@@ -61,7 +62,13 @@ public class YourService extends KiboRpcService {
 
             Integer targetIndex = activeTargets.get(0);
             for(Map.Entry<Integer,Boolean> entry : targetMapping.entrySet()){
-                if(!entry.getValue() && Utils.distance3DSquare(currentPos,pointData.points.get(targetIndex)) > Utils.distance3DSquare(currentPos,pointData.points.get(entry.getKey()))){
+                ArrayList<Point> move_oder= (new Dijkstra3D()).dijkstra(api.getRobotKinematics().getPosition(),pointData.points.get(entry.getKey()));
+                move_oder = concatPath(move_oder);
+                double estimateMovingTime = Utils.calcMovingTime(move_oder);
+                Log.i("StellarCoders",String.format("TargetSearch: target[%d] ,estimate %.2f",entry.getKey(),estimateMovingTime));
+                boolean canAchieve = estimateMovingTime + 22 * 1000 <= api.getTimeRemaining().get(0);
+                if(entry.getKey() == QRCODE_POSITION_TARGET)canAchieve = true;
+                if(!entry.getValue() && canAchieve && Utils.distance3DSquare(currentPos,pointData.points.get(targetIndex)) > Utils.distance3DSquare(currentPos,pointData.points.get(entry.getKey()))){
                     targetIndex = entry.getKey();
                 }
             }
@@ -70,16 +77,22 @@ public class YourService extends KiboRpcService {
             Log.i("StellarCoders", String.format("Target : %d",targetIndex));
             //移動
             int result = moveDijkstra(pointData.points.get(targetIndex), quaternions.points.get(targetIndex),targetIndex);
-            if(result == 1){
+            if(result == -1){
                 continue;
             }
             Log.i("StellarCoders", String.format("Move finished. Current : %s",api.getRobotKinematics().getPosition().toString()));
             Log.i("StellarCoders", String.format("Target Position was : %s",pointData.points.get(targetIndex).toString()));
+
             /*
             * ここで角度の調整など
             * */
+            if(targetIndex == QRCODE_POSITION_TARGET){
+                qrString = readQRCode(api);
+                targetMapping.put(targetIndex,true);
+                continue;
+            }
             try{
-                for (int cnt = 0; cnt < 1; cnt++) {
+                for (int cnt = 0; cnt < 2; cnt++) {
                     api.laserControl(true);
                     Log.i("StellarCoders",String.format("Detected Markers: %s",Utils.searchMarker(Utils.calibratedNavCam(api))));
                     api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
@@ -108,6 +121,10 @@ public class YourService extends KiboRpcService {
         }
 
         // Go to Goal
+        if(!targetMapping.get(QRCODE_POSITION_TARGET)){
+            moveDijkstra(pointData.QRCodePos,quaternions.QRCodePos);
+            readQRCode(api);
+        }
         api.notifyGoingToGoal();
         Log.i("StellarCoders","Start Moving to Goal");
         moveDijkstra(pointData.goal,quaternions.goal);
@@ -126,8 +143,16 @@ public class YourService extends KiboRpcService {
         QRCodeDetector qrCodeDetector = new QRCodeDetector();
         api.flashlightControlFront(0.3f);
         String qrString = "";
+        Mat img = Utils.calibratedNavCam(api);
         try {
-            qrString= qrCodeDetector.detectAndDecode(Utils.calibratedNavCam(api));
+            for (int i = 0; i < 4; i++) {
+                qrString = qrCodeDetector.detectAndDecode(img);
+                if(!qrString.equals("")) {
+                    break;
+                }else{
+                    img = Utils.rotateImg(img);
+                }
+            }
             api.saveMatImage(Utils.calibratedNavCam(api),"CalibratedQrImage.png");
         }catch (Error e){
             Log.e("StellarCoders",e.getMessage());
