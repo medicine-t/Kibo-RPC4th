@@ -242,6 +242,24 @@ public class Utils {
         return String.format("Point [%.3f, %.3f, %.3f]", p.getX(),p.getY(),p.getZ());
     }
 
+    // return millisecond
+    public static double calcAchieveTime(double distance){
+        if (distance < 2.5){ // 最高速まで行かずに減速を開始するとき
+            // v-t図書いて面積Sを求めてS = distanceとしてtを求めるといい
+            return 2 * Math.sqrt(10 * distance) * 1000;
+        }else {
+            return ((distance - 2.5) * 2 + 10) * 1000 ;
+        }
+    }
+
+    public static double calcMovingTime(ArrayList<Point> move_oder){
+        double ret = 0.0;
+        for (int i = 0; i < move_oder.size() - 1; i++) {
+            ret += Utils.calcAchieveTime(Math.sqrt(Utils.distance3DSquare(move_oder.get(i),move_oder.get(i + 1))));
+        }
+        return ret;
+    }
+
     /**
      *      * 0: xyz
      *      * 1: xzy
@@ -277,5 +295,19 @@ public class Utils {
             return new Vector3(v.getZ(),v.getX(),v.getY());
         }
         return new Vector3(0,0,0);
+    }
+
+    public static Mat rotateImg(Mat img){
+        org.opencv.core.Point center = new org.opencv.core.Point(img.cols() / 2, img.rows() / 2);
+        //int center = (width/2), int(height/2))
+        //回転角を指定
+        double  angle = 90.0;
+        //スケールを指定
+        double scale = 1.0;
+        //getRotationMatrix2D関数を使用
+        Mat rotMat = Imgproc.getRotationMatrix2D(center,angle,scale);
+        Mat warpRotateDst = new Mat();
+        Imgproc.warpAffine( img, warpRotateDst, rotMat, img.size() );
+        return warpRotateDst;
     }
 }

@@ -64,7 +64,10 @@ public class Dijkstra3D {
             1.7, 1.4, 1.7
     };
 
-    public ArrayList<Point> dijkstra(PointI start, PointI goal){
+    public ArrayList<Point> dijkstra(Point start_p, Point goal_p){
+        CheckPoints checkPoints = new CheckPoints();
+        PointI start = checkPoints.Point2I(start_p);
+        PointI goal =  checkPoints.Point2I(goal_p);
         Log.i("StellarCoders",String.format("Dijkstra Called"));
         Log.i("StellarCoders",String.format("Dijkstra Goal is %s",goal.toString()));
         PriorityQueue<Node> que = new PriorityQueue<Node>(new NodeComparator());
@@ -131,6 +134,7 @@ public class Dijkstra3D {
         }
         Log.i("StellarCoders","Dijkstra path construct finished");
         Collections.reverse(path);
+        path.add(goal_p);
         return path;
     }
 

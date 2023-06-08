@@ -16,7 +16,7 @@ public class ConstPoints {
             add(new Point(10.51,-6.7185,5.1804));
             add(new Point(11.114,-7.9756,5.3393));
             add(new Point(11.355,-8.9929 ,4.7818));
-            add(new Point(11.369,-8.5518,4.48));
+            add(new Point(11.369,-8.5518,4.48));//  QRCode
         }
     };
 
