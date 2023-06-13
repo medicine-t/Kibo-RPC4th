@@ -72,7 +72,7 @@ public class Utils {
         }
 
         double t = e2.dot(beta) * invDet;
-        if (t < 0.0f) {
+        if (t <= 0.0f) {
             return false;
         }
 
@@ -155,7 +155,7 @@ public class Utils {
 
     public static Vector3 cam2center = new Vector3(0 * 0.1177, -0.0422, -0.0826).prod(-1);
     public static Vector3 center2laser = new Vector3(0 * 0.1302, 0.0572, -0.1111);
-
+    public static Vector3 cam2laser = Utils.cam2center.add(Utils.center2laser); // 0,0.0994, -0.0285
     public static Point applyPoint(Point p,Vector3 v){
         return new Point(p.getX() + v.getX(),p.getY() + v.getY(), p.getZ() + v.getZ());
     }
@@ -193,14 +193,15 @@ public class Utils {
             return new Vector3(0,0,0);
         }
 
-        ArrayList<Integer> ids = Utils.searchMarker(Utils.calibratedNavCam(api));
-        Collections.reverse(ids);
+        ArrayList<Integer> ids = new ArrayList<>();
+        for (int i = 0; i < markerIds.size(0); i++) {
+            ids.add((int) markerIds.get(i,0)[0]);
+        }
         Log.i("StellarCoders",String.format("Detected : %s",ids));
         if(ids.size() == 0) return new Vector3(0,0,0);
-        Vector3 cam2laser = Utils.cam2center.add(Utils.center2laser); // 0,0.0994, -0.0285
 
         Vector3 target = new Vector3(0,0,0);
-        for (int i = 0; i < rvecs.height(); i++) {
+        for (int i = 0; i < Math.min(ids.size(),rvecs.height()); i++) {
             double[] relationalTarget = new double[]{0,0,0};
             relationalTarget = tvecs.get(i,0);
             //TODO: ここの座標がシミュレーターから推察できる結果とズレているので調査
@@ -209,11 +210,15 @@ public class Utils {
             relationalTarget[1] += biasMarker[(ids.get(i) - 1 ) % 4][1];
             relationalTarget[2] += biasMarker[(ids.get(i) - 1 ) % 4][2];
             Log.i("StellarCoders",String.format("Biased %s", Arrays.toString(relationalTarget)));
-            target = target.add(new Vector3(relationalTarget[0] - cam2laser.getY(),relationalTarget[1] - cam2laser.getZ(),0));
+            target = target.add(new Vector3(relationalTarget[0] - cam2laser.getY(),(relationalTarget[1] - cam2laser.getZ()),0));
         }
         Vector3 v = target.prod(1.0 / rvecs.height());
         Log.i("StellarCoders",String.format("Average diffs : %.3f %.3f %.3f",v.getX(),v.getY(),v.getZ()));
-        Vector3 camPositionFixed = v;//.add(Utils.cam2center);
+
+        double nx = v.getX();
+        double ny = v.getY();
+        double nz = v.getZ();
+        Vector3 camPositionFixed = new Vector3(nx,ny,nz);
         //camPositionFixed = camPositionFixed.add(Utils.center2laser);
         Log.i("StellarCoders",String.format("Un-Rotated Coordinate : %.3f %.3f %.3f",camPositionFixed.getX(),camPositionFixed.getY(),camPositionFixed.getZ()));
         //Quaternion q = Utils.inverseQuaternion(api.getRobotKinematics().getOrientation());
@@ -309,5 +314,44 @@ public class Utils {
         Mat warpRotateDst = new Mat();
         Imgproc.warpAffine( img, warpRotateDst, rotMat, img.size() );
         return warpRotateDst;
+    }
+
+    public static Quaternion QuatSlerp(Quaternion q1,Quaternion q2,double d){
+        double qr = q1.getW() * q2.getW() + q1.getX() * q2.getX() + q1.getY() * q2.getY()
+                + q1.getZ() * q2.getZ();
+        double ss = 1.0 - (qr * qr);
+        if (ss == 0.0){
+            return new Quaternion(
+                     q1.getX(),
+                    q1.getY(),
+                    q1.getZ(),
+                    q1.getW()
+            );
+        }else{
+            double ph = Math.acos(qr);
+            if(qr < 0.0 && ph > Math.PI / 2.0){
+                float s1,s2;
+                qr = - q1.getW() * q2.getW() - q1.getX() * q2.getX() - q1.getY() * q2.getY()
+                        - q1.getZ() * q2.getZ();
+                ph = Math.acos(qr);
+                s1 = (float) (Math.sin(ph * (1.0 - d)) / Math.sin(ph));
+                s2 = (float) (Math.sin(ph * d) / Math.sin(ph));
+
+                return new Quaternion(
+                         q1.getX() * s1 - q2.getX() * s2,
+                        q1.getY() * s1 - q2.getY() * s2,
+                        q1.getZ() * s1 - q2.getZ() * s2,
+                        q1.getW() * s1 - q2.getW() * s2);
+            }else{
+                float s1,s2;
+                s1 = (float) (Math.sin(ph * (1.0 - d)) / Math.sin(ph));
+                s2 = (float) (Math.sin(ph *  d       ) / Math.sin(ph));
+                return new Quaternion(
+                         q1.getX() * s1 + q2.getX() * s2,
+                        q1.getY() * s1 + q2.getY() * s2,
+                         q1.getZ() * s1 + q2.getZ() * s2,
+                         q1.getW() * s1 + q2.getW() * s2);
+            }
+        }
     }
 }

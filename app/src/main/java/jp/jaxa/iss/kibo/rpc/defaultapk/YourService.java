@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Stack;
 import java.util.Vector;
 
+import gov.nasa.arc.astrobee.Kinematics;
 import gov.nasa.arc.astrobee.Result;
 import gov.nasa.arc.astrobee.types.Point;
 import gov.nasa.arc.astrobee.types.Quaternion;
@@ -40,9 +41,9 @@ public class YourService extends KiboRpcService {
         ConstPoints pointData = new ConstPoints();
         ConstQuaternions quaternions = new ConstQuaternions();
 
-        api.moveTo(new Point(10.5,-10.0,4.5 ),new Quaternion(0,0,0,1),true);
+        //api.moveTo(new Point(10.5,-10.0,4.5 ),new Quaternion(0,0,0,1),true);
         //this.moveDijkstra(api,new Point(10.5,-9.6,4.8 ),new Quaternion(0,0,0,1));
-        Log.i("StellarCoders","Moved to Initial Point");
+        //Log.i("StellarCoders","Moved to Initial Point");
 
         String qrString = "";
 
@@ -66,7 +67,7 @@ public class YourService extends KiboRpcService {
                 move_oder = concatPath(move_oder);
                 double estimateMovingTime = Utils.calcMovingTime(move_oder);
                 Log.i("StellarCoders",String.format("TargetSearch: target[%d] ,estimate %.2f",entry.getKey(),estimateMovingTime));
-                boolean canAchieve = estimateMovingTime + 22 * 1000 <= api.getTimeRemaining().get(0);
+                boolean canAchieve = estimateMovingTime + 30 * 1000 <= api.getTimeRemaining().get(0);
                 if(entry.getKey() == QRCODE_POSITION_TARGET)canAchieve = true;
                 if(!entry.getValue() && canAchieve && Utils.distance3DSquare(currentPos,pointData.points.get(targetIndex)) > Utils.distance3DSquare(currentPos,pointData.points.get(entry.getKey()))){
                     targetIndex = entry.getKey();
@@ -75,8 +76,10 @@ public class YourService extends KiboRpcService {
 
 
             Log.i("StellarCoders", String.format("Target : %d",targetIndex));
+            Log.i("StellarCoders",String.format("Target Position : %s",pointData.points.get(targetIndex).toString()));
             //移動
-            int result = moveDijkstra(pointData.points.get(targetIndex), quaternions.points.get(targetIndex),targetIndex);
+            Point correctedTarget = Utils.applyPoint(pointData.points.get(targetIndex),Utils.target2transpose(targetIndex,new Vector3(-Utils.cam2laser.getY(),-Utils.cam2laser.getZ(),0)));
+            int result = moveDijkstra(correctedTarget, quaternions.points.get(targetIndex),targetIndex);
             if(result == -1){
                 continue;
             }
@@ -92,7 +95,8 @@ public class YourService extends KiboRpcService {
                 continue;
             }
             try{
-                for (int cnt = 0; cnt < 2; cnt++) {
+                for (int cnt = 0; cnt < 1; cnt++) {
+                    if(api.getTimeRemaining().get(0) <= 1000 * 30)break;
                     api.laserControl(true);
                     Log.i("StellarCoders",String.format("Detected Markers: %s",Utils.searchMarker(Utils.calibratedNavCam(api))));
                     api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
@@ -101,8 +105,8 @@ public class YourService extends KiboRpcService {
                     Vector3 rel = Utils.getDiffFromCam(api,targetIndex);
                     Point currentPosition = api.getRobotKinematics().getPosition();
                     Log.e("StellarCoders",String.format("relative %.3f, %.3f, %.3f",rel.getX(),rel.getY(),rel.getZ()));
-                    rel = rel.add(new Vector3(currentPosition.getX(),currentPosition.getY(),currentPosition.getZ()));
-                    api.moveTo(new Point(rel.getX(),rel.getY(),rel.getZ()),quaternions.points.get(targetIndex),true);
+                    //rel = rel.add(new Vector3(currentPosition.getX(),currentPosition.getY(),currentPosition.getZ()));
+                    api.relativeMoveTo(new Point(rel.getX(),rel.getY(),rel.getZ()),quaternions.points.get(targetIndex),true);
 
                     api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
                     api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Detected_Markers_Position_%s.png",api.getTimeRemaining().get(1).toString()));
@@ -179,6 +183,7 @@ public class YourService extends KiboRpcService {
         ArrayList<Point> concatenated = new ArrayList<>();
         Area[] KOZs = new ConstAreas().KOZs;
         Point from = api.getRobotKinematics().getPosition();
+        Log.i("StellarCoders",String.format("move_oder: %s",move_oder.toString()));
         for(int idx = 0;idx < move_oder.size();idx++){
             Point basePoint = new Point(from.getX(), from.getY(),from.getZ());
             int max_idx = idx;
@@ -199,28 +204,40 @@ public class YourService extends KiboRpcService {
                         max_idx = next_idx;
                         validDestination = new Point(destination.getX(),destination.getY(),destination.getZ());
                         Log.i("StellarCoders",String.format("Valid Route Updated! FROM: %s, TO: %s",basePoint,destination));
+
                     }
                 }
             }
             idx = max_idx;
-            Point to = validDestination;
+            Point to = move_oder.get(idx);
             concatenated.add(to);
             from = new Point(to.getX(),to.getY(),to.getZ());
+
         }
 
         return  concatenated;
     }
 
     int moveDijkstra(Point goal, Quaternion q, int targetIndex) {
-        Log.i("StellarCoders",String.format("Current Pos %s",this.api.getRobotKinematics().getPosition().toString()));
+        Kinematics kine = api.getRobotKinematics();
+        Point currentPos = kine.getPosition();
+        Log.i("StellarCoders",String.format("Current Pos %s",kine.getPosition().toString()));
         CheckPoints checkPoints = new CheckPoints();
         Dijkstra3D dijManager = new Dijkstra3D();
         ArrayList<Point> move_oder = dijManager.dijkstra(api.getRobotKinematics().getPosition(),goal);
 
         ArrayList<Point> concatenated = concatPath(move_oder);
+        double totalDistance = 0.0;
+        for (int i = 0; i < concatenated.size() - 1; i++) {
+            totalDistance += Utils.distance3DSquare(concatenated.get(i),concatenated.get(i + 1));
+        }
+        Log.i("StellarCoders",String.format("Concatenated: %s",concatenated.toString()));
+        double dist = 0.0;
         for (int i = 0; i < concatenated.size(); i++) {
             try{
-                api.moveTo(concatenated.get(i),q,true);
+                dist += Utils.distance3DSquare(currentPos,concatenated.get(i));
+                api.moveTo(concatenated.get(i),Utils.QuatSlerp(kine.getOrientation(),q,Math.min(1,dist / totalDistance)), true);
+                currentPos = concatenated.get(i);
             }catch (Error e){
                 Log.e("StellarCoders",e.getMessage());
                 return -1;

@@ -68,8 +68,8 @@ public class Dijkstra3D {
         CheckPoints checkPoints = new CheckPoints();
         PointI start = checkPoints.Point2I(start_p);
         PointI goal =  checkPoints.Point2I(goal_p);
-        Log.i("StellarCoders",String.format("Dijkstra Called"));
-        Log.i("StellarCoders",String.format("Dijkstra Goal is %s",goal.toString()));
+        Log.i("StellarCoders",String.format("Dijkstra Called. Start : %s",start_p));
+        Log.i("StellarCoders",String.format("Dijkstra Goal is %s",goal_p));
         PriorityQueue<Node> que = new PriorityQueue<Node>(new NodeComparator());
         double[][][] dist = new double[meta.num_div_x + 10][meta.num_div_y + 10][meta.num_div_z + 10];
         Node[][][] prev = new Node[meta.num_div_x + 10][meta.num_div_y + 10][meta.num_div_z + 10];
@@ -84,6 +84,7 @@ public class Dijkstra3D {
         Log.i("StellarCoders", "Dijkstra Start");
         Log.i("StellarCoders",String.format("Start Point is %d,%d,%d",start.getX(),start.getY(),start.getZ()));
         dist[start.getX()][start.getY()][start.getZ()] = 0;
+        prev[start.getX()][start.getY()][start.getZ()].p = start;
         Node s = new Node();
         s.p = start;
 
@@ -96,7 +97,7 @@ public class Dijkstra3D {
             int y = p.getY();
             int z = p.getZ();
             //Log.i("StellarCoders",q.toString());
-            if(p == goal){
+            if(p.equals(goal)){
                 trace = q;
                 break;
             }
@@ -128,7 +129,7 @@ public class Dijkstra3D {
         ArrayList<Point> path = new ArrayList<>();
         path.add(cp.idx2Point(prev[goal.getX()][goal.getY()][goal.getZ()].p));
         trace = prev[goal.getX()][goal.getY()][goal.getZ()];
-        while(!trace.p.isNan()){
+        while(!trace.p.equals(start)){
             path.add(cp.idx2Point(trace.p));
             trace = prev[trace.p.getX()][trace.p.getY()][trace.p.getZ()];
         }

@@ -10,7 +10,7 @@ public class CheckPoints {
     private final float height = -6.0f - (-10.5f); //4.5 //y
     private final float depth =  5.57f - 4.02f;// 1.55 //z
 
-    private final float div_value = 0.05f;
+    private final float div_value = 0.1f;
     private final float offset = 0.05f;
     public int num_div_x = (int) Math.ceil((length - 2 * offset) / div_value);
     public int num_div_y = (int) Math.ceil((height - 2 * offset) / div_value);
@@ -51,6 +51,7 @@ public class CheckPoints {
         for(int i = 0;i < num_div_x;i++){
             for(int j = 0;j < num_div_y;j++){
                 for (int k = 0; k < num_div_z; k++) {
+                    checkPoints[i][j][k] = false;
                     boolean can = false;
                     for(Area kiz : KIZs){
                         can = can || kiz.isInclude(idx2Point(i,j,k));
