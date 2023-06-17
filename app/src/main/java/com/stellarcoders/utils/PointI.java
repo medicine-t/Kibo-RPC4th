@@ -16,7 +16,7 @@ public class PointI {
     }
 
     public boolean isNan(){
-        return this.x == -1 & this.y == -1 && this.z == -1;
+        return this.x == -1 || this.y == -1 || this.z == -1;
     }
 
     public Integer getX(){

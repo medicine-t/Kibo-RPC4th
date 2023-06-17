@@ -1,5 +1,6 @@
 package jp.jaxa.iss.kibo.rpc.defaultapk;
 
+import android.annotation.SuppressLint;
 import android.util.Log;
 
 import com.stellarcoders.Area;
@@ -33,6 +34,7 @@ import org.opencv.objdetect.QRCodeDetector;
 
 public class YourService extends KiboRpcService {
 
+    @SuppressLint("DefaultLocale")
     @Override
     protected void runPlan1(){
         // write your plan 1 here
@@ -52,7 +54,7 @@ public class YourService extends KiboRpcService {
         // QRCode
         final int QRCODE_POSITION_TARGET = 6;
         targetMapping.put(QRCODE_POSITION_TARGET,false);
-        while(2 * 60 * 1000 + 30 * 1000 <= api.getTimeRemaining().get(1)) { //remain time is [ms]
+        while(5 * 60 * 1000 - (3 * 60 * 1000 + 0 * 30 * 1000) <= api.getTimeRemaining().get(1)) { //remain time is [ms]
             List<Integer> activeTargets = api.getActiveTargets();
             Point currentPos = api.getRobotKinematics().getPosition();
             Log.i("StellarCoders",String.format("Remain Targets : %s",activeTargets.toString()));
@@ -78,7 +80,7 @@ public class YourService extends KiboRpcService {
             Log.i("StellarCoders", String.format("Target : %d",targetIndex));
             Log.i("StellarCoders",String.format("Target Position : %s",pointData.points.get(targetIndex).toString()));
             //移動
-            Point correctedTarget = Utils.applyPoint(pointData.points.get(targetIndex),Utils.target2transpose(targetIndex,new Vector3(-Utils.cam2laser.getY(),-Utils.cam2laser.getZ(),0)));
+            Point correctedTarget = Utils.applyPoint(pointData.points.get(targetIndex),Utils.target2transpose(targetIndex,new Vector3(-0.07,0.12,0)));
             int result = moveDijkstra(correctedTarget, quaternions.points.get(targetIndex),targetIndex);
             if(result == -1){
                 continue;
@@ -95,23 +97,26 @@ public class YourService extends KiboRpcService {
                 continue;
             }
             try{
+                api.laserControl(true);
+                //api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
+                api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Detected_Markers_Position_%s.png", api.getTimeRemaining().get(1).toString()));
                 for (int cnt = 0; cnt < 1; cnt++) {
-                    if(api.getTimeRemaining().get(0) <= 1000 * 30)break;
-                    api.laserControl(true);
+                    if(api.getTimeRemaining().get(0) <= 1000 * 15)break;
                     Log.i("StellarCoders",String.format("Detected Markers: %s",Utils.searchMarker(Utils.calibratedNavCam(api))));
-                    api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
-                    api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Detected_Markers_Position_%s.png", api.getTimeRemaining().get(1).toString()));
 
                     Vector3 rel = Utils.getDiffFromCam(api,targetIndex);
                     Point currentPosition = api.getRobotKinematics().getPosition();
                     Log.e("StellarCoders",String.format("relative %.3f, %.3f, %.3f",rel.getX(),rel.getY(),rel.getZ()));
+                    if(rel.getX() * rel.getX() + rel.getY() * rel.getY() + rel.getZ() * rel.getZ() <= 0.01){
+                        continue;
+                    }
                     //rel = rel.add(new Vector3(currentPosition.getX(),currentPosition.getY(),currentPosition.getZ()));
                     api.relativeMoveTo(new Point(rel.getX(),rel.getY(),rel.getZ()),quaternions.points.get(targetIndex),true);
 
-                    api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
+                    //api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
                     api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Detected_Markers_Position_%s.png",api.getTimeRemaining().get(1).toString()));
-                    api.laserControl(false);
                 }
+                api.laserControl(false);
             } catch (Error e){
                 Log.e("StellarCoders",e.getMessage());
             }
@@ -119,6 +124,7 @@ public class YourService extends KiboRpcService {
             //
             Result laserResult = api.laserControl(true);
             if(laserResult != null && !laserResult.hasSucceeded())Log.i("StellarCoders",String.format("Laser toggle result : %s",laserResult.getMessage()));
+            api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Snapshot_%d_%s.png",targetIndex + 1,api.getTimeRemaining().get(1).toString()));
             api.takeTargetSnapshot(targetIndex + 1);
             targetMapping.put(targetIndex,true);
             Log.i("StellarCoders", String.format("Remain Time is %s",api.getTimeRemaining().get(1).toString()));

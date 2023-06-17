@@ -155,15 +155,16 @@ public class Utils {
 
     public static Vector3 cam2center = new Vector3(0 * 0.1177, -0.0422, -0.0826).prod(-1);
     public static Vector3 center2laser = new Vector3(0 * 0.1302, 0.0572, -0.1111);
-    public static Vector3 cam2laser = Utils.cam2center.add(Utils.center2laser); // 0,0.0994, -0.0285
+    //public static Vector3 cam2laser = Utils.cam2center.add(Utils.center2laser); // 0,0.0994, -0.0285
+    public static Vector3 cam2laser = new Vector3(0,0.0994, -0.0285);
     public static Point applyPoint(Point p,Vector3 v){
         return new Point(p.getX() + v.getX(),p.getY() + v.getY(), p.getZ() + v.getZ());
     }
 
     public static Vector3 getDiffFromCam(KiboRpcApi api,int targetId){
         double[][] biasMarker = {
-                {-0.1,0.0375,0},
-                {0.1,0.0375,0},
+                {-0.1,+0.0375,0},
+                {0.1,+0.0375,0},
                 {0.1,-0.0375,0},
                 {-0.1,-0.0375,0},
         };
@@ -202,6 +203,7 @@ public class Utils {
 
         Vector3 target = new Vector3(0,0,0);
         for (int i = 0; i < Math.min(ids.size(),rvecs.height()); i++) {
+            if((ids.get(i) - 1)/ 4 != targetId)continue;
             double[] relationalTarget = new double[]{0,0,0};
             relationalTarget = tvecs.get(i,0);
             //TODO: ここの座標がシミュレーターから推察できる結果とズレているので調査
@@ -218,6 +220,14 @@ public class Utils {
         double nx = v.getX();
         double ny = v.getY();
         double nz = v.getZ();
+        double minimum_move = 0.1;
+        //TODO:  最小移動距離になるようにz方向の移動距離を操作するという案
+        if(nx * nx + ny * ny <= 0.03 * 0.03){
+            return new Vector3(0,0,0);
+        }
+        //if(0.01 * 0.01 <= nx * nx + ny * ny && nx * nx + ny * ny <= minimum_move * minimum_move){
+           //nz = Math.sqrt(Math.max(0,0.05 * 0.05 - nx * nx - ny * ny));
+        //}
         Vector3 camPositionFixed = new Vector3(nx,ny,nz);
         //camPositionFixed = camPositionFixed.add(Utils.center2laser);
         Log.i("StellarCoders",String.format("Un-Rotated Coordinate : %.3f %.3f %.3f",camPositionFixed.getX(),camPositionFixed.getY(),camPositionFixed.getZ()));

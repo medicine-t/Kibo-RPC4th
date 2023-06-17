@@ -1,12 +1,18 @@
 package com.stellarcoders.utils;
 
 import gov.nasa.arc.astrobee.types.Point;
+
+import com.stellarcoders.Area;
 import com.stellarcoders.CheckPoints;
+import com.stellarcoders.ConstAreas;
 import com.stellarcoders.utils.PointI;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.PriorityQueue;
+import java.util.Queue;
 import java.util.Stack;
 import android.util.Log;
 
@@ -69,6 +75,39 @@ public class Dijkstra3D {
         PointI start = checkPoints.Point2I(start_p);
         PointI goal =  checkPoints.Point2I(goal_p);
         Log.i("StellarCoders",String.format("Dijkstra Called. Start : %s",start_p));
+        // Goalが進入禁止エリアのときの処理 (BFS)
+        Queue<PointI> que_bfs = new ArrayDeque<PointI>();
+        double[][][] dist_bfs = new double[meta.num_div_x + 10][meta.num_div_y + 10][meta.num_div_z + 10];
+        for (int i = 0; i < meta.num_div_x + 10; i++) {
+            for (int j = 0; j < meta.num_div_y + 10; j++) {
+                for (int k = 0; k < meta.num_div_z + 10; k++) {
+                    dist_bfs[i][j][k] = INF;
+                }
+            }
+        }
+
+        que_bfs.add(goal);
+        dist_bfs[goal.getX()][goal.getY()][goal.getZ()] = 1;
+        while(!que_bfs.isEmpty()){
+            PointI p = que_bfs.poll();
+            if(checkPoints.checkPoints[p.getX()][p.getY()][p.getZ()]){
+                goal = new PointI(p.getX(),p.getY(),p.getZ());
+                break;
+            }
+            for (int d = 0; d < 26; d++) {
+                if(Math.min(p.getX() + dx[d],Math.min(p.getY() + dy[d],p.getZ() + dz[d])) < 0)continue;
+                if(p.getX() + dx[d] >= meta.num_div_x)continue;
+                if(p.getY() + dy[d] >= meta.num_div_y)continue;
+                if(p.getZ() + dz[d] >= meta.num_div_z)continue;
+                if(dist_bfs[p.getX() + dx[d]][p.getY()+ dy[d]][p.getZ() + dz[d]] == INF) {
+                    que_bfs.add(new PointI(p.getX() + dx[d], p.getY() + dy[d], p.getZ() + dz[d]));
+                    dist_bfs[p.getX() + dx[d]][p.getY()+ dy[d]][p.getZ() + dz[d]] = 1;
+                }
+            }
+        }
+        // BFS処理ここまで
+
+
         Log.i("StellarCoders",String.format("Dijkstra Goal is %s",goal_p));
         PriorityQueue<Node> que = new PriorityQueue<Node>(new NodeComparator());
         double[][][] dist = new double[meta.num_div_x + 10][meta.num_div_y + 10][meta.num_div_z + 10];
@@ -83,8 +122,8 @@ public class Dijkstra3D {
         }
         Log.i("StellarCoders", "Dijkstra Start");
         Log.i("StellarCoders",String.format("Start Point is %d,%d,%d",start.getX(),start.getY(),start.getZ()));
+        Log.i("StellarCoders",String.format("Goal Point is %d,%d,%d",goal.getX(),goal.getY(),goal.getZ()));
         dist[start.getX()][start.getY()][start.getZ()] = 0;
-        prev[start.getX()][start.getY()][start.getZ()].p = start;
         Node s = new Node();
         s.p = start;
 
@@ -96,11 +135,8 @@ public class Dijkstra3D {
             int x = p.getX();
             int y = p.getY();
             int z = p.getZ();
-            //Log.i("StellarCoders",q.toString());
-            if(p.equals(goal)){
-                trace = q;
-                break;
-            }
+
+            Log.i("StellarCoders",String.format("Dijkstra Logging : %s",q.toString()));
             Double distance = q.d;
             for(int d = 0;d < 26;d++){
                 //border check
@@ -117,7 +153,6 @@ public class Dijkstra3D {
                     dist[x + dx[d]][y + dy[d]][z + dz[d]] = distance + cost[d];
                     prev[x + dx[d]][y + dy[d]][z + dz[d]] = q;
                     que.add(nxt);
-
                 }
             }
         }
@@ -127,9 +162,10 @@ public class Dijkstra3D {
         CheckPoints cp = new CheckPoints();
         // re-construct path
         ArrayList<Point> path = new ArrayList<>();
-        path.add(cp.idx2Point(prev[goal.getX()][goal.getY()][goal.getZ()].p));
         trace = prev[goal.getX()][goal.getY()][goal.getZ()];
-        while(!trace.p.equals(start)){
+        Log.i("StellarCoders","Trace initial: " + trace.p.toString());
+        while(!trace.p.isNan()){
+            Log.i("StellarCoders",trace.p.toString());
             path.add(cp.idx2Point(trace.p));
             trace = prev[trace.p.getX()][trace.p.getY()][trace.p.getZ()];
         }

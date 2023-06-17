@@ -27,7 +27,13 @@ public class CheckPoints {
 
     public Area idxArea(PointI pi){
         Point p = idx2Point(pi);
-        return new Area((float) p.getX() - div_value ,(float) p.getY() - div_value,(float) p.getZ() - div_value,(float) p.getX() + div_value,(float) p.getY() + div_value,(float) p.getZ() + div_value);
+        return new Area(
+                Math.min((float) p.getX() - div_value,(float) p.getX() + div_value),
+                Math.min((float) p.getY() - div_value,(float) p.getY() + div_value),
+                Math.min((float) p.getZ() - div_value,(float) p.getZ() + div_value),
+                Math.max((float) p.getX() - div_value,(float) p.getX() + div_value),
+                Math.max((float) p.getY() - div_value,(float) p.getY() + div_value),
+                Math.max((float) p.getZ() - div_value,(float) p.getZ() + div_value) );
     }
 
     public  PointI Point2I(Point p){

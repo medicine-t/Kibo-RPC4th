@@ -9,8 +9,8 @@ public class ConstAreas {
 //        new Area(10.7955f,-8.0635f, 5.1055f, 11.3525f, -7.7305f, 5.1305f),
 //        new Area(10.563f, -7.1449f, 4.6544f, 10.709f, -6.8099f, 4.8164f)
 //    };
-    private final float buffer = 0.10f;
-    public final Area[] KOZs = {
+    private static final float buffer = 0.10f;
+    public static final Area[] KOZs = {
             new Area(10.783f - buffer,-9.8899f - buffer, 4.8385f - buffer, 11.071f + buffer, -9.6929f + buffer, 5.0665f + buffer),
             new Area(10.8652f - buffer, -9.0734f - buffer, 4.3861f - buffer, 10.9628f + buffer, -8.7314f + buffer, 4.6401f + buffer),
             new Area(10.185f - buffer,-8.3826f - buffer,4.1475f - buffer,11.665f + buffer, -8.2826f + buffer, 4.6725f + buffer),
