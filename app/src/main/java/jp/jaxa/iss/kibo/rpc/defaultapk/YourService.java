@@ -80,7 +80,7 @@ public class YourService extends KiboRpcService {
             Log.i("StellarCoders", String.format("Target : %d",targetIndex));
             Log.i("StellarCoders",String.format("Target Position : %s",pointData.points.get(targetIndex).toString()));
             //移動
-            Point correctedTarget = Utils.applyPoint(pointData.points.get(targetIndex),Utils.target2transpose(targetIndex,new Vector3(-0.07,0.12,0)));
+            Point correctedTarget = Utils.applyPoint(pointData.points.get(targetIndex),Utils.target2transpose(targetIndex,new Vector3(-0.06,0.11,0)));
             int result = moveDijkstra(correctedTarget, quaternions.points.get(targetIndex),targetIndex);
             if(result == -1){
                 continue;

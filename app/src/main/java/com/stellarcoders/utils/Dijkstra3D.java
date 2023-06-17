@@ -136,7 +136,7 @@ public class Dijkstra3D {
             int y = p.getY();
             int z = p.getZ();
 
-            Log.i("StellarCoders",String.format("Dijkstra Logging : %s",q.toString()));
+            //Log.i("StellarCoders",String.format("Dijkstra Logging : %s",q.toString()));
             Double distance = q.d;
             for(int d = 0;d < 26;d++){
                 //border check
