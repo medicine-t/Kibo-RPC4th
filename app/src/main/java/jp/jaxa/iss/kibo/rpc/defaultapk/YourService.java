@@ -43,9 +43,6 @@ public class YourService extends KiboRpcService {
         ConstPoints pointData = new ConstPoints();
         ConstQuaternions quaternions = new ConstQuaternions();
 
-        //api.moveTo(new Point(10.5,-10.0,4.5 ),new Quaternion(0,0,0,1),true);
-        //this.moveDijkstra(api,new Point(10.5,-9.6,4.8 ),new Quaternion(0,0,0,1));
-        //Log.i("StellarCoders","Moved to Initial Point");
 
         String qrString = "";
 
@@ -71,7 +68,7 @@ public class YourService extends KiboRpcService {
                 Log.i("StellarCoders",String.format("TargetSearch: target[%d] ,estimate %.2f",entry.getKey(),estimateMovingTime));
                 boolean canAchieve = estimateMovingTime + 30 * 1000 <= api.getTimeRemaining().get(0);
                 if(entry.getKey() == QRCODE_POSITION_TARGET)canAchieve = true;
-                if(!entry.getValue() && canAchieve && Utils.distance3DSquare(currentPos,pointData.points.get(targetIndex)) > Utils.distance3DSquare(currentPos,pointData.points.get(entry.getKey()))){
+                if(!entry.getValue() && canAchieve && PointValues.values.get(targetIndex) *  Utils.distance3DSquare(currentPos,pointData.points.get(targetIndex)) > PointValues.values.get(entry.getKey()) * Utils.distance3DSquare(currentPos,pointData.points.get(entry.getKey()))){
                     targetIndex = entry.getKey();
                 }
             }
