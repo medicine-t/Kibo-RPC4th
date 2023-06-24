@@ -94,15 +94,15 @@ public class YourService extends KiboRpcService {
                 continue;
             }
             try{
-                api.laserControl(true);
+                //api.laserControl(true);
                 //api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
-                api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Detected_Markers_Position_%s.png", api.getTimeRemaining().get(1).toString()));
+                //api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Detected_Markers_Position_%s.png", api.getTimeRemaining().get(1).toString()));
                 for (int cnt = 0; cnt < 1; cnt++) {
                     if(api.getTimeRemaining().get(0) <= 1000 * 15)break;
                     Log.i("StellarCoders",String.format("Detected Markers: %s",Utils.searchMarker(Utils.calibratedNavCam(api))));
 
                     Vector3 rel = Utils.getDiffFromCam(api,targetIndex);
-                    Point currentPosition = api.getRobotKinematics().getPosition();
+                    //Point currentPosition = api.getRobotKinematics().getPosition();
                     Log.e("StellarCoders",String.format("relative %.3f, %.3f, %.3f",rel.getX(),rel.getY(),rel.getZ()));
                     if(rel.getX() * rel.getX() + rel.getY() * rel.getY() + rel.getZ() * rel.getZ() <= 0.01){
                         continue;
@@ -111,9 +111,9 @@ public class YourService extends KiboRpcService {
                     api.relativeMoveTo(new Point(rel.getX(),rel.getY(),rel.getZ()),quaternions.points.get(targetIndex),true);
 
                     //api.saveMatImage(Utils.drawMarker(api,Utils.calibratedNavCam(api)),String.format("Detected_Markers_%s.png",api.getTimeRemaining().get(1).toString()));
-                    api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Detected_Markers_Position_%s.png",api.getTimeRemaining().get(1).toString()));
+                    //api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Detected_Markers_Position_%s.png",api.getTimeRemaining().get(1).toString()));
                 }
-                api.laserControl(false);
+                //api.laserControl(false);
             } catch (Error e){
                 Log.e("StellarCoders",e.getMessage());
             }
@@ -121,7 +121,7 @@ public class YourService extends KiboRpcService {
             //
             Result laserResult = api.laserControl(true);
             if(laserResult != null && !laserResult.hasSucceeded())Log.i("StellarCoders",String.format("Laser toggle result : %s",laserResult.getMessage()));
-            api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Snapshot_%d_%s.png",targetIndex + 1,api.getTimeRemaining().get(1).toString()));
+            //api.saveMatImage(Utils.drawMarkerPoseEstimation(api),String.format("Snapshot_%d_%s.png",targetIndex + 1,api.getTimeRemaining().get(1).toString()));
             api.takeTargetSnapshot(targetIndex + 1);
             targetMapping.put(targetIndex,true);
             Log.i("StellarCoders", String.format("Remain Time is %s",api.getTimeRemaining().get(1).toString()));
@@ -160,7 +160,7 @@ public class YourService extends KiboRpcService {
                     img = Utils.rotateImg(img);
                 }
             }
-            api.saveMatImage(Utils.calibratedNavCam(api),"CalibratedQrImage.png");
+            //api.saveMatImage(Utils.calibratedNavCam(api),"CalibratedQrImage.png");
         }catch (Error e){
             Log.e("StellarCoders",e.getMessage());
         }
