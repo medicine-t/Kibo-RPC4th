@@ -1,5 +1,5 @@
-### Macでビルドするための環境構築
-**AndroidStudioは当てにならないから他のエディタを使うこと**
+# Kibo Robot Programming Challenge 4th(2023)
+
 
 #### INSTALL DEPENDENCIES
 - openjdk8 (adoptopenjdk)
@@ -16,4 +16,5 @@ export JAVA_HOME=/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/H
 export ANDROID_HOME=$HOME/Library/Android/Sdk
 ./gradlew --assembleDebug
 ```
+環境構築した上でAndroid Studioでも可
 出力ファイルは `./app/build/outputs/apk/debug/app-debug.apk`
